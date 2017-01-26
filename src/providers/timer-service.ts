@@ -273,7 +273,7 @@ export class TimerService {
    */
   protected tickIfTimerRunning(interval:number = 1000){
     const isRunning = Object.keys(this._data).find( (k)=>{
-      return this._data[k].isRunning()
+      return this._data[k] && this._data[k].isRunning()
     })
     if (isRunning && !this._tickIntervalHandler) {
       this._tickIntervalHandler = setInterval( ()=>{
