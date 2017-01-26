@@ -21,6 +21,7 @@ export class Timer {
 
   private _subject: Subject<any>;
   private _alarm: Subscription;
+  private _isComplete: Boolean = false;
 
   constructor(id: string, opt:any = {}) {
     const self = this;
@@ -38,6 +39,7 @@ export class Timer {
    * @param value number, timer duration in seconds
    */
   set(value: number, onAlert?: (timer:Timer)=>void ) : Timer {
+    if (this._isComplete) return this;
     // reset timer if value is not provided
     if (value == undefined) value = this.duration/1000;
     this.duration = value * 1000;
@@ -67,6 +69,7 @@ export class Timer {
   }
 
   start() : Timer {
+    if (this._isComplete) return this;
     if (this.done)  return this;
     if (this.isRunning()) return this;
     if (this.remaining && this.remaining < 0) return this;
@@ -112,6 +115,7 @@ export class Timer {
    * pause timer
    */
   pause(toggle: boolean = false) : number {
+    if (this._isComplete) return;
     if (this.isRunning() == false){
        if (toggle)  return this.start().check();
        return this.remaining;
@@ -154,9 +158,13 @@ export class Timer {
     return Math.round(this.remaining/1000);
   }
 
+  /**
+   * send Observable complete() to all subscribers,
+   * and release all timer resources 
+   */
   complete() {
+    this._isComplete = true;
     if (!this.isDone()) this.stop();
-    if (this._alarm) this._alarm.unsubscribe();
     this._subject.complete();
   }
 
@@ -199,6 +207,11 @@ export class Timer {
 
 }
 
+
+
+
+
+
 @Injectable()
 export class TimerService {
   private _data: {[key:string] : Timer} = {}
@@ -210,7 +223,7 @@ export class TimerService {
 
   get(id:string) : Timer {
     const found = id && this._data[id];
-    return found || null;
+    return found;
   }
 
   /**
@@ -232,6 +245,10 @@ export class TimerService {
     }
 
     const found = this.get(id);
+    if(found===null) { 
+      console.warn(`WARNING: this timer has been destroyed, id=${id}`);
+      return;
+    }
     if(found) return found.set(value);
 
     id = id ||  _getUniqueId();
@@ -241,7 +258,10 @@ export class TimerService {
     })
     const mySub = myTimer.subscribe({
       next: (o)=>this.tickIfTimerRunning(1000),
-      complete: ()=>mySub.unsubscribe()
+      complete: ()=>{
+        mySub.unsubscribe();
+        this._data[myTimer.id] = null;
+      }
     })
     return this._data[myTimer.id] = myTimer
   }

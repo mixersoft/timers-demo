@@ -26,6 +26,10 @@ export class HomePage {
       next: (o)=>{
         console.log(`timer, id=${o.timer.id}`,o);
         Object.assign( this.memo[o.timer.id] ,  this.getButtonStyles(o.timer) );
+        if (o.action=='start' && o.timer == t1) setTimeout(repeatSub,1000)
+        if (o.action=='alert') setTimeout(()=>{
+          o.timer.complete()
+        },1000)
       }
     }
 
@@ -44,6 +48,16 @@ export class HomePage {
     t1.setAlert( (t:Timer)=>{
       console.info(`timer alert, id=${t.id}, duration=${t.getDuration()}`);
     })
+
+    const repeatSub = ()=>{
+      const anotherSub = t1.subscribe({
+        next: (t)=>console.warn(`timer, id=${t.timer.id}`,t),
+        complete: ()=>{
+          console.warn(`timer COMPLETE`),
+          anotherSub.unsubscribe();
+        }
+      })
+    }
 
   }
 
