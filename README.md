@@ -40,3 +40,9 @@ npm install
 karma init karma.conf.js
 # choose all defaults, then edit karma.config.js
 ```
+
+
+# add TestService
+```
+ionic g provider TestService
+```

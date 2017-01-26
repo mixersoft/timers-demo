@@ -14,4 +14,22 @@
     Take a look at the <code>src/pages/</code> directory to add or change tabs,
     update any existing page or create new pages.
   </p>
+
+
+    <ion-card  class="timer"
+      *ngFor="let timer of timers"
+    >
+      <ion-card-content>
+        <ion-card-title>{{timer.check()}}</ion-card-title>
+        <div class="card-subtitle">{{timer.label}}</div>
+      </ion-card-content>
+      <ion-note>duration: {{timer.duration/1000}}</ion-note>
+      <button ion-button block 
+        [color]="memo[timer.id]?.color" 
+        (click)="timerClick(timer)"
+      >
+        <ion-icon name="memo[timer.id]?.icon" > {{memo[timer.id]?.label}}</ion-icon>
+      </button>
+    </ion-card>
+
 </ion-content>
