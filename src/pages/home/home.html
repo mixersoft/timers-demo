@@ -24,11 +24,12 @@
         <div class="card-subtitle">{{timer.label}}</div>
       </ion-card-content>
       <ion-note>duration: {{timer.duration/1000}}</ion-note>
-      <button ion-button block 
+      <button ion-button block icon-left 
         [color]="memo[timer.id]?.color" 
         (click)="timerClick(timer)"
       >
-        <ion-icon name="memo[timer.id]?.icon" > {{memo[timer.id]?.label}}</ion-icon>
+        <ion-icon [name]="memo[timer.id]?.icon" ></ion-icon>
+        {{memo[timer.id]?.label}}
       </button>
     </ion-card>
 
