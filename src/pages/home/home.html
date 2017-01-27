@@ -20,7 +20,7 @@
       *ngFor="let timer of timers"
     >
       <ion-card-content>
-        <ion-card-title>{{timer.check()}}</ion-card-title>
+        <ion-card-title>{{timer.checkAsString() }}</ion-card-title>
         <div class="card-subtitle">{{timer.label}}</div>
       </ion-card-content>
       <ion-note>duration: {{timer.duration/1000}}</ion-note>

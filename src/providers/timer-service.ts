@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable, Observer, Subject, Subscription } from "rxjs";
-import { TimerObservable } from "rxjs/observable/TimerObservable";
+import { Observable, Subject, Subscription } from "rxjs";
+
+import * as moment from 'moment';
 
 /*
   Generated class for the TimerService provider.
@@ -8,6 +9,18 @@ import { TimerObservable } from "rxjs/observable/TimerObservable";
   See https://angular.io/docs/ts/latest/guide/dependency-injection.html
   for more info on providers and Angular 2 DI.
 */
+
+export interface duration {
+  d?: number,
+  days?: number,
+  h?: number,
+  hours?: number,
+  m?: number,
+  minutes?: number,
+  s?: number,
+  seconds?: number,
+  duration?: number   // in seconds
+}
 
 export class Timer {
   id: string;
@@ -24,9 +37,9 @@ export class Timer {
   private _isComplete: Boolean = false;
 
   constructor(id: string, opt:any = {}) {
-    const self = this;
     this.id = id;
-    if (opt.duration) this.duration = opt.duration * 1000;
+    this.duration = this._parseDurationMS(opt);
+    if (opt.onAlert) this.setAlert(opt.onAlert);
     if (opt.label) this.label = opt.label;
     if (opt.sound) this.sound = opt.sound;
 
@@ -34,15 +47,18 @@ export class Timer {
 
   }
 
+
   /**
    * set timer and alert callback
    * @param value number, timer duration in seconds
    */
-  set(value: number, onAlert?: (timer:Timer)=>void ) : Timer {
+  set(opt: duration | number, onAlert?: (timer:Timer)=>void ) : Timer {
     if (this._isComplete) return this;
-    // reset timer if value is not provided
-    if (value == undefined) value = this.duration/1000;
-    this.duration = value * 1000;
+
+    if (opt){
+      this.duration = this._parseDurationMS(opt);
+    }
+
     this.remaining = null;
     this.expires = null;
     this.done = false;
@@ -102,13 +118,31 @@ export class Timer {
   /**
    * check time remaining in seconds
    */
-  check() : number {
+  check(asString: boolean = false) : number {
+    let remaining: number = this.remaining || this.duration;
     if (this.isRunning()){
-      const remaining = this.expires - Date.now();
-      return Math.round( remaining / 1000);
+      remaining = this.expires - Date.now();
     }
-    const value = this.remaining || this.duration;
-    return Math.round(value/1000);
+    return Math.round(remaining/1000);
+  }
+
+  checkAsString() : String {
+    let remaining = this.check();
+    const isNegative = remaining < 0;
+    if (isNegative) remaining *= -1;
+    let duration = moment.duration(remaining, 'seconds');
+    let [h,m,s] = ['hours', 'minutes','seconds'].map( (k)=>duration[k]());
+    let padded = [];
+    if (h) padded.push(h);
+    if (padded.length || m) {
+      if (padded.length && m < 10) padded.push('0'+m);
+      else padded.push(m);
+    }
+
+    if (padded.length && s < 10) padded.push('0'+s);
+    else padded.push(s);
+    
+    return (isNegative ? '-' : '') + padded.join(':');
   }
 
   /**
@@ -205,6 +239,16 @@ export class Timer {
     return this.done;
   }
 
+
+
+  private _parseDurationMS(opt: duration | number) : number{
+    if (typeof opt == 'number') opt = {'duration': opt};
+    if (opt.duration) 
+      return opt.duration * 1000;
+    else
+      return moment.duration(opt);
+  }
+
 }
 
 
@@ -228,10 +272,11 @@ export class TimerService {
 
   /**
    * create/set timer
-   * @param value number, duration for timer in seconds
+   * @param opt duration | number, duration for timer in seconds
    * @param id string (optional), unique id of timer, defaults to Unixtime
    */
-  set(value:number, id?:string) : Timer {
+  set(opt: duration | number, id?:string) : Timer {
+    if (typeof opt == 'number') opt = {'duration': opt};
     const _getUniqueId = ()=>{
       id = `${Date.now()}`;
       if (this._data.hasOwnProperty(id)) {
@@ -249,13 +294,11 @@ export class TimerService {
       console.warn(`WARNING: this timer has been destroyed, id=${id}`);
       return;
     }
-    if(found) return found.set(value);
+    if(found) return found.set(opt);
 
     id = id ||  _getUniqueId();
 
-    const myTimer = new Timer(id, {
-      duration: value
-    })
+    const myTimer = new Timer(id, opt)
     const mySub = myTimer.subscribe({
       next: (o)=>this.tickIfTimerRunning(1000),
       complete: ()=>{
