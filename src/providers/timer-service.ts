@@ -160,7 +160,7 @@ export class Timer {
 
   /**
    * send Observable complete() to all subscribers,
-   * and release all timer resources 
+   * and give subscribers an opportunity to release all timer resources 
    */
   complete() {
     this._isComplete = true;
