@@ -14,3 +14,4 @@
 declare module '*';
 
 declare module 'moment';
+declare module 'lodash';

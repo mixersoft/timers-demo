@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, Subject, Subscription } from "rxjs";
 
 import * as moment from 'moment';
+import * as _ from 'lodash';
 
 /*
   Generated class for the TimerService provider.
@@ -280,11 +281,8 @@ export class TimerService {
     const _getUniqueId = ()=>{
       id = `${Date.now()}`;
       if (this._data.hasOwnProperty(id)) {
-        let i = 1;
-        while (this._data.hasOwnProperty(`${id}.${i}`)){
-          i++;
-        }
-        id = `${id}.${i}`;
+        let keys = _.filter( Object.keys(this._data), (k)=>_.startsWith(k, id))
+        id = `${id}.${keys.length}`;
       }
       return id;
     }
@@ -306,7 +304,7 @@ export class TimerService {
         this._data[myTimer.id] = null;
       }
     })
-    return this._data[myTimer.id] = myTimer
+    return this._data[myTimer.id] = myTimer;
   }
 
 
