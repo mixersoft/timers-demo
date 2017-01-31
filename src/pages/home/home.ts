@@ -34,8 +34,13 @@ export class HomePage {
     }
 
 
-    const t1 = this.timerSvc.set(4);
-    const t2 = this.timerSvc.set({minutes:3});
+    const t1 = this.timerSvc.setTimer(4);
+    const t2 = this.timerSvc.create('CookTimer', {
+      minutes:3,
+      checkInterval: {
+        duration: { seconds: 5}
+      }
+    });
     [t1,t2].forEach( o=>{
       this.timers.push(o);
       this.memo[o.id] = Object.assign({

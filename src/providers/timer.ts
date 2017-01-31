@@ -2,7 +2,10 @@ import { Observable, Subject, Subscription } from "rxjs";
 import * as _ from 'lodash';
 import * as moment from 'moment';
 
-import { duration } from './timer-service';
+import { 
+  optTimer, duration, 
+  parseDurationMS 
+} from './timer-service';
 
 
 export class Timer {
@@ -14,12 +17,13 @@ export class Timer {
   protected remaining: number;      // remaining time after pause
   protected expires: number;        // Unixtime for timer expiration
   protected done: boolean;          // user responds to timer expiration
+  protected _isComplete: Boolean = false;
+  protected _subject: Subject<any>;
 
-  private _subject: Subject<any>;
   private _alarm: Subscription;
-  private _isComplete: Boolean = false;
+  
 
-  constructor(id: string, opt:any = {}) {
+  constructor(id: string, opt:optTimer = {}) {
     this.id = id;
     this._subject = new Subject<any>();
     const validKeys = {
@@ -27,7 +31,7 @@ export class Timer {
         attrs: ['onAlert', 'label', 'sound']
     };
     const duration = _.pick(opt, validKeys.duration);
-    this['duration'] = this._parseDurationMS(duration);
+    this['duration'] = parseDurationMS(duration);
     const options = _.pick(opt, validKeys.attrs);
     _.each( options, (v,k)=>{
         this[k] = v;
@@ -43,7 +47,7 @@ export class Timer {
     if (this._isComplete) return this;
 
     if (opt){
-      this.duration = this._parseDurationMS(opt);
+      this.duration = parseDurationMS(opt);
     }
 
     this.remaining = null;
@@ -105,7 +109,7 @@ export class Timer {
   /**
    * check time remaining in seconds
    */
-  check(asString: boolean = false) : number {
+  check() : number {
     let remaining: number = this.remaining || this.duration;
     if (this.isRunning()){
       remaining = this.expires - Date.now();
@@ -224,16 +228,6 @@ export class Timer {
 
   isDone(): boolean {
     return this.done;
-  }
-
-
-
-  private _parseDurationMS(opt: duration | number) : number{
-    if (typeof opt == 'number') opt = {'duration': opt};
-    if (opt.duration) 
-      return opt.duration * 1000;
-    else
-      return moment.duration(opt);
   }
 
 }
