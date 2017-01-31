@@ -21,13 +21,17 @@ export class Timer {
 
   constructor(id: string, opt:any = {}) {
     this.id = id;
-    this.duration = this._parseDurationMS(opt);
-    if (opt.onAlert) this.setAlert(opt.onAlert);
-    if (opt.label) this.label = opt.label;
-    if (opt.sound) this.sound = opt.sound;
-
     this._subject = new Subject<any>();
-
+    const validKeys = {
+        duration: ['duration', 'd','days','h','hours','m','minutes','s','seconds'],
+        attrs: ['onAlert', 'label', 'sound']
+    };
+    const duration = _.pick(opt, validKeys.duration);
+    this['duration'] = this._parseDurationMS(duration);
+    const options = _.pick(opt, validKeys.attrs);
+    _.each( options, (v,k)=>{
+        this[k] = v;
+    });
   }
 
 
