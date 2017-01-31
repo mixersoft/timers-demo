@@ -2,8 +2,9 @@
 // import { Api } from './api';
 // import { Settings } from './settings';
 // import { Items } from '../mocks/providers/items';
-import { Timer, TimerService } from './timer-service';
+import { duration, Timer, TimerService } from './timer-service';
 
 export {
-  Timer, TimerService
+  duration,
+  Timer, TimerService, 
 };

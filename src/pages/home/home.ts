@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 
 import { NavController } from 'ionic-angular';
 
-import { Timer, TimerService } from '../../providers/timer-service';
+import { Timer, TimerService } from '../../providers/index';
 
 
 @Component({
