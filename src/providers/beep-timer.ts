@@ -5,25 +5,26 @@ import * as moment from 'moment';
 
 import { 
     // interfaces
-    optTimer, optCookTimer, duration, checkInterval,  
+    optTimer, optBeepTimer, duration, checkInterval,  
     // classes   
     // methods
-    parseDurationMS,        
+    parseDurationMS, 
+    TimerEnumAction       
 } from './timer-service';
 
 
 
 /**
- * CookTimer
+ * BeepTimer
  * - adds 'beep' events to Observable
  */
-export class CookTimer extends Timer {
+export class BeepTimer extends Timer {
     protected checkInterval: checkInterval;
     protected onBeep: (timer:Timer)=>void; 
 
     private _beep: Subscription;
 
-    constructor(id: string, opt:optCookTimer = {}) {
+    constructor(id: string, opt:optBeepTimer = {}) {
         super(id, opt);
         const validKeys = ['checkInterval', 'onBeep'];
         const options = _.pick(opt, validKeys);
@@ -32,29 +33,38 @@ export class CookTimer extends Timer {
         });
     }
 
-    getBeepInterval(options:checkInterval = {}) : number {
+    getBeepInterval(options:checkInterval = {}) : [number, number] {
         let interval: number;
-        if (options['frequency'])
-            interval = this.duration/options['frequency']
-        else if (options['duration']) {
-            interval = parseDurationMS(options['duration']);
+        let {initial, frequency, duration} = options;
+        let initialDelay : number = parseDurationMS(initial) || 0;
+        let adjDuration = this.duration - interval;
+        if (frequency)
+            interval = adjDuration/frequency
+        else if (duration) {
+            interval = parseDurationMS(duration);
         }
-        if (interval && this.duration < interval) {
+        if (interval && adjDuration < interval) {
             console.warn('WARNING: checkpoint interval is invalid. ignoring.')
         }
-        return interval;
+        return [initialDelay, interval];    // in MS
     }
 
-    scheduleBeep(interval?: number) {
-        let remaining: number = interval || this.remaining || this.duration;
-        const beepInterval = this.getBeepInterval(this.checkInterval);
-        const nextCheckpoint = beepInterval - ((this.duration - remaining) % beepInterval);
-        if (nextCheckpoint < remaining) {
+    scheduleBeep() {
+        let remaining: number = this.remaining || this.duration;
+        const timerElapsed = this.duration - (remaining);
+        const [initialDelay, beepInterval] = this.getBeepInterval(this.checkInterval);
+        let actualDelay: number = initialDelay - timerElapsed;
+        if (actualDelay < 0){
+            actualDelay = beepInterval - (((this.duration-initialDelay) - remaining) % beepInterval);
+        }
+        if (actualDelay < remaining) {
             //  add a separate alarm to fire when timer reaches 0
-            this._beep = Observable.timer(nextCheckpoint, beepInterval).subscribe( ()=>{
+            this._beep = Observable.timer(actualDelay, beepInterval).subscribe( ()=>{
+                // console.log(this.duration - this.check(true), initialDelay);
+                const elapsed = (this.duration - this.check(true)) - 5 // add 5ms slop
                 this._subject.next( {
-                    action: 'beep',
-                    value: nextCheckpoint,
+                    action: TimerEnumAction.Beep,
+                    value: elapsed < initialDelay ? initialDelay : beepInterval,
                     timer: this
                 } );
                 

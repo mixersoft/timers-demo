@@ -4,7 +4,8 @@ import * as moment from 'moment';
 
 import { 
   optTimer, duration, 
-  parseDurationMS 
+  parseDurationMS,
+  TimerEnumAction
 } from './timer-service';
 
 
@@ -56,7 +57,7 @@ export class Timer {
     if (onAlert) this.onAlert = onAlert;
 
     this._subject.next({
-      action: 'set',
+      action: TimerEnumAction.Set,
       value: this.duration,
       timer: this
     });
@@ -85,7 +86,7 @@ export class Timer {
     this.expires = Date.now() + this.remaining;
 
     this._subject.next(  {
-      action: 'start',
+      action: TimerEnumAction.Start,
       value: this.remaining,
       timer: this
     } );
@@ -93,7 +94,7 @@ export class Timer {
     //  add a separate alarm to fire when timer reaches 0
     this._alarm = Observable.timer(this.remaining).subscribe( ()=>{
       this._subject.next( {
-        action: 'alert',
+        action: TimerEnumAction.Done,
         value: this.check(),
         timer: this
       } );
@@ -109,11 +110,12 @@ export class Timer {
   /**
    * check time remaining in seconds
    */
-  check() : number {
+  check(asMS = false) : number {
     let remaining: number = this.remaining || this.duration;
     if (this.isRunning()){
       remaining = this.expires - Date.now();
     }
+    if (asMS) return remaining;
     return Math.round(remaining/1000);
   }
 
@@ -154,7 +156,7 @@ export class Timer {
     } 
 
     this._subject.next({
-      action: 'pause',
+      action: TimerEnumAction.Pause,
       value: this.remaining,
       timer: this
     } );
@@ -175,7 +177,7 @@ export class Timer {
       this._alarm = null;
     } 
     this._subject.next( {
-      action: 'stop',
+      action: TimerEnumAction.Stop,
       value: this.remaining,
       timer: this
     } );
@@ -195,12 +197,12 @@ export class Timer {
 
   /**
    * chain timer to start immediately after another timer reaches 0,
-   * i.e. notification with action=='alert'
+   * i.e. notification with action==TimerEnumAction.Done
    */
   chain(timer0:Timer) {
     const chainSubscription = timer0.subscribe({
       next: (o)=>{
-        if (o.action=='alert') {
+        if (o.action==TimerEnumAction.Done) {
           setTimeout(()=>this.start());
           chainSubscription.unsubscribe();
           // console.log("start chained timer, id=", this.id);

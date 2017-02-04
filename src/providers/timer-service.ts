@@ -1,12 +1,14 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject, Subscription } from "rxjs";
 import { Timer } from './timer'
-import { CookTimer } from './cook-timer'
+import { BeepTimer } from './beep-timer'
 import * as _ from 'lodash';
 import * as moment from 'moment';
 
 export { 
-  Timer, CookTimer 
+  Timer, BeepTimer
+  // ActiveTimer
+  // ConcurrentTimer
 };
 
 /*
@@ -15,6 +17,17 @@ export {
   See https://angular.io/docs/ts/latest/guide/dependency-injection.html
   for more info on providers and Angular 2 DI.
 */
+
+
+export enum TimerEnumAction {
+  Set = 1,
+  Start,
+  Pause,
+  Beep,
+  Done,
+  Stop,
+  Complete
+}
 
 export interface duration {
   duration?: number;   // in seconds
@@ -29,8 +42,9 @@ export interface duration {
   // [propName: string]: any;
 }
 
-// CookTimer interval specification
+// BeepTimer interval specification
 export interface checkInterval {
+  initial?: duration,
   frequency?: number;       
   duration?: duration;
   // [propName: string]: any;
@@ -44,7 +58,7 @@ export interface optTimer {
   duration?: duration;
 }
 
-export interface optCookTimer extends optTimer {
+export interface optBeepTimer extends optTimer {
   checkInterval?: checkInterval;
   onBeep?: (timer: Timer)=>void;
 }
@@ -59,7 +73,7 @@ export function parseDurationMS(opt: duration | number) : number {
 
 const TimerClasses = {
   'Timer': Timer,
-  'CookTimer': CookTimer
+  'BeepTimer': BeepTimer
 }
 
 @Injectable()

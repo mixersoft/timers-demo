@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 
 import { NavController } from 'ionic-angular';
 
-import { Timer, TimerService } from '../../providers/index';
+import { TimerEnumAction, Timer, TimerService } from '../../providers/index';
 
 
 @Component({
@@ -24,7 +24,7 @@ export class HomePage {
 
     const timerObserver = { 
       next: (o)=>{
-        console.log(`timer, id=${o.timer.id}`,o);
+        console.log(`timer, id=${o.timer.id} action=${TimerEnumAction[o.action]}`,o);
         Object.assign( this.memo[o.timer.id] ,  this.getButtonStyles(o.timer) );
         if (o.action=='start' && o.timer == t1) setTimeout(repeatSub,1000)
         if (o.action=='alert') setTimeout(()=>{
@@ -35,9 +35,10 @@ export class HomePage {
 
 
     const t1 = this.timerSvc.setTimer(4);
-    const t2 = this.timerSvc.create('CookTimer', {
+    const t2 = this.timerSvc.create('BeepTimer', {
       minutes:3,
       checkInterval: {
+        initial: { seconds: 2},
         duration: { seconds: 5}
       }
     });
