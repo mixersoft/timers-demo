@@ -17,19 +17,19 @@
 
 
     <ion-card  class="timer"
-      *ngFor="let timer of timers"
-    >
+      *ngFor="let snapshot of timers | toJSON"
+    > 
       <ion-card-content>
-        <ion-card-title>{{timer.checkAsString() }}</ion-card-title>
-        <div class="card-subtitle">{{timer.label}}</div>
+        <ion-card-title>{{snapshot.humanize }}</ion-card-title>
+        <div class="card-subtitle">{{snapshot.label}}</div>
       </ion-card-content>
-      <ion-note>duration: {{timer.duration/1000}}</ion-note>
+      <ion-note>duration: {{snapshot.duration/1000 | number:0}}, remaining: {{snapshot.remaining/1000}}</ion-note>
       <button ion-button block icon-left 
-        [color]="memo[timer.id]?.color" 
-        (click)="timerClick(timer)"
+        [color]="memo[snapshot.id]?.color" 
+        (click)="timerClick(snapshot.$instance, timer)"
       >
-        <ion-icon [name]="memo[timer.id]?.icon" ></ion-icon>
-        {{memo[timer.id]?.label}}
+        <ion-icon [name]="memo[snapshot.id]?.icon" ></ion-icon>
+        {{memo[snapshot.id]?.label}}
       </button>
     </ion-card>
 

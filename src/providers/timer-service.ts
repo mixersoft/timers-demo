@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { Observable, Subject, Subscription } from "rxjs";
+import { Injectable, Pipe, PipeTransform } from '@angular/core';
+import { Observer, Observable, Subject, Subscription } from "rxjs";
 import { Timer } from './timer'
 import { BeepTimer } from './beep-timer'
 import * as _ from 'lodash';
@@ -11,15 +11,27 @@ export {
   // ConcurrentTimer
 };
 
-/*
-  Generated class for the TimerService provider.
+interface JSONSerializable {
+  toJSON: ()=>any;
+}
 
-  See https://angular.io/docs/ts/latest/guide/dependency-injection.html
-  for more info on providers and Angular 2 DI.
-*/
+@Pipe({name: 'toJSON', pure: false})
+export class ToJsonPipe implements PipeTransform {
+  transform(value: JSONSerializable | Array<JSONSerializable>): any | Array<any> { 
+    let unwrap = false;
+    if (!Array.isArray(value)) {
+      value = [value];
+      unwrap = true;
+    }
+    const result = value.map( (o)=>{
+      if (o && o.toJSON) return o.toJSON(); 
+      else return {};
+    })
+    return unwrap ? result[0] : result;
+  }
+}
 
-
-export enum TimerEnumAction {
+export enum TimerAction {
   Set = 1,
   Start,
   Pause,
@@ -29,7 +41,39 @@ export enum TimerEnumAction {
   Complete
 }
 
-export interface duration {
+export interface TimerEvent {
+  action: TimerAction;
+  value: any;
+  timer: Timer;
+}
+
+export interface TimerAttributes {
+  id: string;
+  label: string;
+  duration: number;
+  remaining: number;
+  humanize: string;
+  expires: number;
+  $instance: Timer;
+}
+
+export interface TimerInterface {
+  id: string;
+  set: (opt: Duration | number) => Timer;
+  start: ()=>Timer;
+  check: ()=>number;
+  pause: ()=> number;
+  stop: ()=> number;
+  complete: ()=>void;
+  toJSON: ()=>TimerAttributes;
+  subscribe: (observer: Observer<TimerEvent>) => Subscription;
+  isRunning: ()=> boolean;
+  isDone: ()=> boolean;
+  // TODO: not sure, use toJSON instead??
+  getDuration: ()=> number;
+}
+
+export interface Duration {
   duration?: number;   // in seconds
   d?: number;
   days?: number;
@@ -43,10 +87,10 @@ export interface duration {
 }
 
 // BeepTimer interval specification
-export interface checkInterval {
-  initial?: duration,
+export interface BeepInterval {
+  initial?: Duration,
   frequency?: number;       
-  duration?: duration;
+  duration?: Duration;
   // [propName: string]: any;
 }
 
@@ -55,15 +99,15 @@ export interface optTimer {
   label?: string;
   sound?: string;
   onAlert?: (timer: Timer)=>void;
-  duration?: duration;
+  duration?: Duration;
 }
 
 export interface optBeepTimer extends optTimer {
-  checkInterval?: checkInterval;
+  beepInterval?: BeepInterval;
   onBeep?: (timer: Timer)=>void;
 }
 
-export function parseDurationMS(opt: duration | number) : number {
+export function parseDurationMS(opt: Duration | number) : number {
   if (typeof opt == 'number') opt = {'duration': opt};
   if (opt.duration) 
     return opt.duration * 1000;
@@ -121,13 +165,13 @@ export class TimerService {
    * @param opt duration | number, duration for timer in seconds
    * @param id string (optional), unique id of timer, defaults to Unixtime
    */
-  setTimer(value: duration | number , id?:string) : Timer {
+  setTimer(value: Duration | number , id?:string) : Timer {
     let found : Timer = this.get(id);
     if (found===null) { 
       console.warn(`WARNING: this timer has been destroyed, id=${id}`);
       return;
     }
-    let duration: duration;
+    let duration: Duration;
     if (typeof value == 'number') 
       duration = {'duration': value};
     else 

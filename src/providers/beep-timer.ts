@@ -5,11 +5,11 @@ import * as moment from 'moment';
 
 import { 
     // interfaces
-    optTimer, optBeepTimer, duration, checkInterval,  
+    optTimer, optBeepTimer, Duration, BeepInterval,  
     // classes   
     // methods
     parseDurationMS, 
-    TimerEnumAction       
+    TimerAction       
 } from './timer-service';
 
 
@@ -19,21 +19,21 @@ import {
  * - adds 'beep' events to Observable
  */
 export class BeepTimer extends Timer {
-    protected checkInterval: checkInterval;
+    protected beepInterval: BeepInterval;
     protected onBeep: (timer:Timer)=>void; 
 
     private _beep: Subscription;
 
     constructor(id: string, opt:optBeepTimer = {}) {
         super(id, opt);
-        const validKeys = ['checkInterval', 'onBeep'];
+        const validKeys = ['beepInterval', 'onBeep'];
         const options = _.pick(opt, validKeys);
         _.each( options, (v,k)=>{
             this[k] = v;
         });
     }
 
-    getBeepInterval(options:checkInterval = {}) : [number, number] {
+    getBeepInterval(options:BeepInterval = {}) : [number, number] {
         let interval: number;
         let {initial, frequency, duration} = options;
         let initialDelay : number = parseDurationMS(initial) || 0;
@@ -52,7 +52,7 @@ export class BeepTimer extends Timer {
     scheduleBeep() {
         let remaining: number = this.remaining || this.duration;
         const timerElapsed = this.duration - (remaining);
-        const [initialDelay, beepInterval] = this.getBeepInterval(this.checkInterval);
+        const [initialDelay, beepInterval] = this.getBeepInterval(this.beepInterval);
         let actualDelay: number = initialDelay - timerElapsed;
         if (actualDelay < 0){
             actualDelay = beepInterval - (((this.duration-initialDelay) - remaining) % beepInterval);
@@ -63,7 +63,7 @@ export class BeepTimer extends Timer {
                 // console.log(this.duration - this.check(true), initialDelay);
                 const elapsed = (this.duration - this.check(true)) - 5 // add 5ms slop
                 this._subject.next( {
-                    action: TimerEnumAction.Beep,
+                    action: TimerAction.Beep,
                     value: elapsed < initialDelay ? initialDelay : beepInterval,
                     timer: this
                 } );

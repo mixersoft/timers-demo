@@ -3,13 +3,13 @@ import * as _ from 'lodash';
 import * as moment from 'moment';
 
 import { 
-  optTimer, duration, 
+  optTimer, Duration, 
   parseDurationMS,
-  TimerEnumAction
+  TimerAction, TimerEvent, TimerAttributes, TimerInterface
 } from './timer-service';
 
 
-export class Timer {
+export class Timer implements TimerInterface {
   id: string;
   label: string;
   sound: string;
@@ -44,7 +44,7 @@ export class Timer {
    * set timer and alert callback
    * @param value number, timer duration in seconds
    */
-  set(opt: duration | number, onAlert?: (timer:Timer)=>void ) : Timer {
+  set(opt: Duration | number, onAlert?: (timer:Timer)=>void ) : Timer {
     if (this._isComplete) return this;
 
     if (opt){
@@ -57,7 +57,7 @@ export class Timer {
     if (onAlert) this.onAlert = onAlert;
 
     this._subject.next({
-      action: TimerEnumAction.Set,
+      action: TimerAction.Set,
       value: this.duration,
       timer: this
     });
@@ -86,7 +86,7 @@ export class Timer {
     this.expires = Date.now() + this.remaining;
 
     this._subject.next(  {
-      action: TimerEnumAction.Start,
+      action: TimerAction.Start,
       value: this.remaining,
       timer: this
     } );
@@ -94,7 +94,7 @@ export class Timer {
     //  add a separate alarm to fire when timer reaches 0
     this._alarm = Observable.timer(this.remaining).subscribe( ()=>{
       this._subject.next( {
-        action: TimerEnumAction.Done,
+        action: TimerAction.Done,
         value: this.check(),
         timer: this
       } );
@@ -116,15 +116,20 @@ export class Timer {
       remaining = this.expires - Date.now();
     }
     if (asMS) return remaining;
-    return Math.round(remaining/1000);
+    return Math.floor(remaining/1000);
   }
 
-  checkAsString() : String {
-    let remaining = this.check();
+
+  /**
+   * convert Timer remaining time or a millisecond value to
+   * a padded string in the format "-hh:mm:ss"
+   */
+  humanize(millisecond?: number) : string {
+    let remaining = millisecond ? millisecond/1000 : this.check();
     const isNegative = remaining < 0;
     if (isNegative) remaining *= -1;
-    let duration = moment.duration(remaining, 'seconds');
-    let [h,m,s] = ['hours', 'minutes','seconds'].map( (k)=>duration[k]());
+    let dur = moment.duration(remaining, 'seconds');
+    let [h,m,s] = ['hours', 'minutes','seconds'].map( (k)=>dur[k]());
     let padded = [];
     if (h) padded.push(h);
     if (padded.length || m) {
@@ -137,6 +142,26 @@ export class Timer {
     
     return (isNegative ? '-' : '') + padded.join(':');
   }
+
+
+  /**
+   * create a snapshot of the timer
+   */
+  toJSON() : TimerAttributes {
+    const remaining = this.check(true);
+    return {
+      id: this.id,
+      label: this.label,
+      // asMilliseconds
+      duration: this.duration,
+      // asMilliseconds
+      remaining: remaining,
+      humanize: this.humanize(remaining),
+      // as Unixtime
+      expires: this.expires,
+      $instance: this
+    }
+  }  
 
   /**
    * pause timer
@@ -156,7 +181,7 @@ export class Timer {
     } 
 
     this._subject.next({
-      action: TimerEnumAction.Pause,
+      action: TimerAction.Pause,
       value: this.remaining,
       timer: this
     } );
@@ -177,7 +202,7 @@ export class Timer {
       this._alarm = null;
     } 
     this._subject.next( {
-      action: TimerEnumAction.Stop,
+      action: TimerAction.Stop,
       value: this.remaining,
       timer: this
     } );
@@ -197,12 +222,12 @@ export class Timer {
 
   /**
    * chain timer to start immediately after another timer reaches 0,
-   * i.e. notification with action==TimerEnumAction.Done
+   * i.e. notification with action==TimerAction.Done
    */
   chain(timer0:Timer) {
     const chainSubscription = timer0.subscribe({
       next: (o)=>{
-        if (o.action==TimerEnumAction.Done) {
+        if (o.action==TimerAction.Done) {
           setTimeout(()=>this.start());
           chainSubscription.unsubscribe();
           // console.log("start chained timer, id=", this.id);

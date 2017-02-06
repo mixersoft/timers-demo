@@ -3,13 +3,15 @@
 // import { Settings } from './settings';
 // import { Items } from '../mocks/providers/items';
 import { 
-  optTimer, optBeepTimer, duration, checkInterval, 
+  optTimer, optBeepTimer, Duration, BeepInterval, 
   BeepTimer, Timer, TimerService,
-  TimerEnumAction
+  TimerAction,
+  ToJsonPipe
 } from './timer-service';
 
 export {
-  optTimer, optBeepTimer, duration, checkInterval,
+  optTimer, optBeepTimer, Duration, BeepInterval,
   BeepTimer, Timer, TimerService, 
-  TimerEnumAction
+  TimerAction,
+  ToJsonPipe
 };

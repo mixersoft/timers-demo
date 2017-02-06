@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 
 import { NavController } from 'ionic-angular';
 
-import { TimerEnumAction, Timer, TimerService } from '../../providers/index';
+import { TimerAction, Timer, TimerService } from '../../providers/index';
 
 
 @Component({
@@ -24,7 +24,7 @@ export class HomePage {
 
     const timerObserver = { 
       next: (o)=>{
-        console.log(`timer, id=${o.timer.id} action=${TimerEnumAction[o.action]}`,o);
+        console.log(`timer, id=${o.timer.id} action=${TimerAction[o.action]}`,o);
         Object.assign( this.memo[o.timer.id] ,  this.getButtonStyles(o.timer) );
         if (o.action=='start' && o.timer == t1) setTimeout(repeatSub,1000)
         if (o.action=='alert') setTimeout(()=>{
@@ -36,8 +36,8 @@ export class HomePage {
 
     const t1 = this.timerSvc.setTimer(4);
     const t2 = this.timerSvc.create('BeepTimer', {
-      minutes:3,
-      checkInterval: {
+      'minutes':3,
+      'beepInterval': {
         initial: { seconds: 2},
         duration: { seconds: 5}
       }
@@ -68,20 +68,21 @@ export class HomePage {
   }
 
   
-  getButtonStyles(timer:Timer):any{
-    if (timer.isRunning() && timer.check() > 0) return {
+  getButtonStyles(timer: Timer):any{
+    let timerAsJSON = timer.toJSON();
+    if (timer.isRunning() && timerAsJSON.remaining > 0) return {
       icon: 'pause',
       color: 'primary',
       label: 'Pause',
       action: 'pause'
     }
-    if (timer.isRunning() && timer.check() <= 0) return {
+    if (timer.isRunning() && timerAsJSON.remaining <= 0) return {
       icon:'stop',
       color: 'danger',
       label: 'Stop',
       action: 'stop'
     }
-    if ( !timer.isDone() && timer.check() > 0 ) return {
+    if ( !timer.isDone() && timerAsJSON.remaining > 0 ) return {
       icon:'play',
       color: 'secondary',
       label: 'Start',
