@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 
 import { NavController } from 'ionic-angular';
 
-import { TimerAction, Timer, TimerService } from '../../providers/index';
+import { TimerAction, TimerEvent, Timer, TimerAttributes, TimerService } from '../../providers/index';
 
 
 @Component({
@@ -23,11 +23,12 @@ export class HomePage {
   createTimers(){
 
     const timerObserver = { 
-      next: (o)=>{
-        console.log(`timer, id=${o.timer.id} action=${TimerAction[o.action]}`,o);
-        Object.assign( this.memo[o.timer.id] ,  this.getButtonStyles(o.timer) );
-        if (o.action=='start' && o.timer == t1) setTimeout(repeatSub,1000)
-        if (o.action=='alert') setTimeout(()=>{
+      next: (o:TimerEvent)=>{
+        console.log(`timer, id=${o.id} action=${TimerAction[o.action]}`,o);
+        const timer = this.timerSvc.get(o.id);
+        Object.assign( this.memo[o.id] ,  this.getButtonStyles(timer) );
+        if (o.action==TimerAction.Start &&  timer== t1) setTimeout(repeatSub,1000)
+        if (o.action==TimerAction.Done) setTimeout(()=>{
           // o.timer.complete()
         },1000)
       }
@@ -51,13 +52,24 @@ export class HomePage {
 
     t2.chain(t1);
 
-    t1.setAlert( (t:Timer)=>{
-      console.info(`timer alert, id=${t.id}, duration=${t.getDuration()}`);
+    t2.setCallbacks({
+      'onDone':(t:Timer)=>{
+        console.info(`timer2 onDone() DONE, id=${t.id}, duration=${t.getDuration()}`);
+      },
+      'onBeep':(t:Timer)=>{
+        console.info(`timer2 onBeep() BEEP, id=${t.id}, remaining=${t.check()}`);
+      }
+    })
+
+    t1.setCallbacks({
+      'onDone': (t:Timer)=>{
+        console.info(`timer onDone() DONE, id=${t.id}, duration=${t.getDuration()}`);
+      }
     })
 
     const repeatSub = ()=>{
       const anotherSub = t1.subscribe({
-        next: (t)=>console.warn(`timer, id=${t.timer.id}`,t),
+        next: (t)=>console.info(`2nd timer1 subscr, id=${t.id}`,t),
         complete: ()=>{
           console.warn(`timer COMPLETE`),
           anotherSub.unsubscribe();
@@ -69,6 +81,7 @@ export class HomePage {
 
   
   getButtonStyles(timer: Timer):any{
+    // if (!timer) return {}
     let timerAsJSON = timer.toJSON();
     if (timer.isRunning() && timerAsJSON.remaining > 0) return {
       icon: 'pause',
@@ -96,8 +109,8 @@ export class HomePage {
     }
   }
 
-  timerClick(timer:Timer) {
-    
+  timerClick(snapshot:TimerAttributes) {
+    const timer: Timer = this.timerSvc.get(snapshot.id);
     const action = this.getButtonStyles(timer).action
     timer[action]();
 

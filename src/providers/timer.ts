@@ -13,23 +13,23 @@ export class Timer implements TimerInterface {
   id: string;
   label: string;
   sound: string;
-  protected onAlert: (timer:Timer)=>void;                // callback when timer.remaining==0
-  protected duration: number = 0;   // original duration, in seconds
-  protected remaining: number;      // remaining time after pause
-  protected expires: number;        // Unixtime for timer expiration
-  protected done: boolean;          // user responds to timer expiration
-  protected _isComplete: Boolean = false;
-  protected _subject: Subject<any>;
+  protected onDone: (timer:Timer)=>void;       // (optional) callback when timer.remaining==0
+  protected duration: number = 0;       // original duration, in seconds
+  protected remaining: number;          // remaining time after pause
+  protected expires: number;            // Unixtime for timer expiration
+  protected _isDone: boolean;           // user responds to timer expiration
+  protected _isComplete: Boolean = false; // true on timer.complete(), this._subject.complete() is notified
+  protected _subject: Subject<TimerEvent>;  // use this.subscribe() to get TimerEvents from Subject
 
-  private _alarm: Subscription;
+  private _alarm: Subscription;         // subscription for actual TimerAction.Done notifcation
   
 
   constructor(id: string, opt:optTimer = {}) {
     this.id = id;
-    this._subject = new Subject<any>();
+    this._subject = new Subject<TimerEvent>();
     const validKeys = {
         duration: ['duration', 'd','days','h','hours','m','minutes','s','seconds'],
-        attrs: ['onAlert', 'label', 'sound']
+        attrs: ['onDone', 'label', 'sound']
     };
     const duration = _.pick(opt, validKeys.duration);
     this['duration'] = parseDurationMS(duration);
@@ -44,7 +44,7 @@ export class Timer implements TimerInterface {
    * set timer and alert callback
    * @param value number, timer duration in seconds
    */
-  set(opt: Duration | number, onAlert?: (timer:Timer)=>void ) : Timer {
+  set(opt: Duration | number, onDone?: (timer:Timer)=>void ) : Timer {
     if (this._isComplete) return this;
 
     if (opt){
@@ -53,13 +53,13 @@ export class Timer implements TimerInterface {
 
     this.remaining = null;
     this.expires = null;
-    this.done = false;
-    if (onAlert) this.onAlert = onAlert;
+    this._isDone = false;
+    if (onDone) this.onDone = onDone;
 
     this._subject.next({
       action: TimerAction.Set,
       value: this.duration,
-      timer: this
+      id: this.id
     });
 
     return this;
@@ -70,15 +70,16 @@ export class Timer implements TimerInterface {
   }
 
   /**
-   * set alert callback which is called when timer reaches 0
+   * set callback, called when Timer.remaining == 0
+   * @param {[key:string]: (timer:Timer)=>void}, key=[onDone]
    */
-  setAlert( onAlert: (timer:Timer)=>void ){
-    this.onAlert = onAlert;
+  setCallbacks( callbacks: {[key:string]: (timer:Timer)=>void} ){
+    this.onDone = callbacks['onDone'] || undefined;
   }
 
   start() : Timer {
     if (this._isComplete) return this;
-    if (this.done)  return this;
+    if (this._isDone)  return this;
     if (this.isRunning()) return this;
     if (this.remaining && this.remaining < 0) return this;
 
@@ -88,7 +89,7 @@ export class Timer implements TimerInterface {
     this._subject.next(  {
       action: TimerAction.Start,
       value: this.remaining,
-      timer: this
+      id: this.id
     } );
 
     //  add a separate alarm to fire when timer reaches 0
@@ -96,14 +97,14 @@ export class Timer implements TimerInterface {
       this._subject.next( {
         action: TimerAction.Done,
         value: this.check(),
-        timer: this
+        id: this.id
       } );
       this._alarm.unsubscribe();
-      if (this.onAlert) this.onAlert(this);
+      if (this.onDone) this.onDone(this);
     });
 
     this.remaining = null;
-    this.done = false;
+    this._isDone = false;
     return this;
   }
 
@@ -158,8 +159,7 @@ export class Timer implements TimerInterface {
       remaining: remaining,
       humanize: this.humanize(remaining),
       // as Unixtime
-      expires: this.expires,
-      $instance: this
+      expires: this.expires
     }
   }  
 
@@ -183,7 +183,7 @@ export class Timer implements TimerInterface {
     this._subject.next({
       action: TimerAction.Pause,
       value: this.remaining,
-      timer: this
+      id: this.id
     } );
 
     return Math.round(this.remaining/1000);
@@ -193,7 +193,7 @@ export class Timer implements TimerInterface {
    * acknowledge timer alert, stops countdown past 0
    */
   stop() : number {
-    this.done = true;
+    this._isDone = true;
     this.remaining = this.expires - Date.now();
     this.expires = null;
 
@@ -204,7 +204,7 @@ export class Timer implements TimerInterface {
     this._subject.next( {
       action: TimerAction.Stop,
       value: this.remaining,
-      timer: this
+      id: this.id
     } );
 
     return Math.round(this.remaining/1000);
@@ -254,7 +254,7 @@ export class Timer implements TimerInterface {
   }
 
   isDone(): boolean {
-    return this.done;
+    return this._isDone;
   }
 
 }

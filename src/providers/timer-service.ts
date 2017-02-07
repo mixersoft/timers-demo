@@ -42,9 +42,9 @@ export enum TimerAction {
 }
 
 export interface TimerEvent {
+  id: string;
   action: TimerAction;
   value: any;
-  timer: Timer;
 }
 
 export interface TimerAttributes {
@@ -54,7 +54,6 @@ export interface TimerAttributes {
   remaining: number;
   humanize: string;
   expires: number;
-  $instance: Timer;
 }
 
 export interface TimerInterface {

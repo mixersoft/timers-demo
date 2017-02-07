@@ -26,7 +26,7 @@
       <ion-note>duration: {{snapshot.duration/1000 | number:0}}, remaining: {{snapshot.remaining/1000}}</ion-note>
       <button ion-button block icon-left 
         [color]="memo[snapshot.id]?.color" 
-        (click)="timerClick(snapshot.$instance, timer)"
+        (click)="timerClick(snapshot)"
       >
         <ion-icon [name]="memo[snapshot.id]?.icon" ></ion-icon>
         {{memo[snapshot.id]?.label}}

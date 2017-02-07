@@ -65,18 +65,28 @@ export class BeepTimer extends Timer {
                 this._subject.next( {
                     action: TimerAction.Beep,
                     value: elapsed < initialDelay ? initialDelay : beepInterval,
-                    timer: this
+                    id: this.id
                 } );
                 
                 if (beepInterval < this.remaining) this._beep.unsubscribe();
+                // call onBeep callback
                 if (this.onBeep) this.onBeep(this);
             });
         }
     }
 
+    /**
+     * set callback, called when Timer.remaining == 0
+     * @param {[key:string]: (timer:Timer)=>void}, key=[onBeep]
+     */
+    setCallbacks( callbacks: {[key:string]: (timer:Timer)=>void} ){
+        super.setCallbacks(callbacks);
+        this.onBeep = callbacks['onBeep'] || undefined;
+    }    
+
     start() : Timer {
         if (this._isComplete) return this;
-        if (this.done)  return this;
+        if (this._isDone)  return this;
         if (this.isRunning()) return this;
         if (this.remaining && this.remaining < 0) return this;
 
