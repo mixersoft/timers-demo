@@ -13,6 +13,7 @@ export class Timer implements TimerInterface {
   id: string;
   label: string;
   sound: string;
+  snapshot: TimerAttributes;
   protected onDone: (timer:Timer)=>void;       // (optional) callback when timer.remaining==0
   protected duration: number = 0;       // original duration, in seconds
   protected remaining: number;          // remaining time after pause
@@ -37,6 +38,7 @@ export class Timer implements TimerInterface {
     _.each( options, (v,k)=>{
         this[k] = v;
     });
+    this.snapshot = this.toJSON();  // initialize snapshot
   }
 
 
@@ -126,6 +128,7 @@ export class Timer implements TimerInterface {
    * a padded string in the format "-hh:mm:ss"
    */
   humanize(millisecond?: number) : string {
+    // as seconds
     let remaining = millisecond ? millisecond/1000 : this.check();
     const isNegative = remaining < 0;
     if (isNegative) remaining *= -1;
@@ -148,20 +151,31 @@ export class Timer implements TimerInterface {
   /**
    * create a snapshot of the timer
    */
-  toJSON() : TimerAttributes {
-    const remaining = this.check(true);
+  toJSON(asMS=false) : TimerAttributes {
+    const remaining = this.check(asMS);
+    // console.log(this.id, this.duration, remaining)
     return {
       id: this.id,
       label: this.label,
       // asMilliseconds
-      duration: this.duration,
+      duration: asMS ? this.duration : Math.floor(this.duration/1000),
       // asMilliseconds
       remaining: remaining,
-      humanize: this.humanize(remaining),
+      humanize: this.humanize(asMS ? remaining : this.check(true) ),
       // as Unixtime
       expires: this.expires
     }
-  }  
+  }
+
+
+  /**
+   * BUG: trying to get SimpleChange to capture this.snapshot.remaining.previousValue
+   * WITHOUT causing Error: Expression has changed after it was checked
+   */
+  snap(asMS=false): TimerAttributes {
+    Object.assign( this.snapshot, this.toJSON(asMS))
+    return this.snapshot;
+  }
 
   /**
    * pause timer

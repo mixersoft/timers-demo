@@ -1,5 +1,6 @@
 import { NgModule, ErrorHandler } from '@angular/core';
 import { IonicApp, IonicModule, IonicErrorHandler } from 'ionic-angular';
+import { RoundProgressModule, RoundProgressConfig } from 'angular-svg-round-progressbar';
 
 import { MyApp } from './app.component';
 import { AboutPage } from '../pages/about/about';
@@ -20,6 +21,7 @@ import { TimerService, ToJsonPipe } from '../providers/timer-service';
   ],
   imports: [
     IonicModule.forRoot(MyApp)
+    , RoundProgressModule
   ],
   bootstrap: [IonicApp],
   entryComponents: [
@@ -32,6 +34,7 @@ import { TimerService, ToJsonPipe } from '../providers/timer-service';
   providers: [
     {provide: ErrorHandler, useClass: IonicErrorHandler}
     , TimerService
+    , RoundProgressConfig
   ]
 })
 export class AppModule {}

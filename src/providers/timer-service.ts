@@ -17,16 +17,22 @@ interface JSONSerializable {
 
 @Pipe({name: 'toJSON', pure: false})
 export class ToJsonPipe implements PipeTransform {
-  transform(value: JSONSerializable | Array<JSONSerializable>): any | Array<any> { 
+  transform(value: JSONSerializable | Array<JSONSerializable>, snapshot:boolean ): any | Array<any> { 
     let unwrap = false;
     if (!Array.isArray(value)) {
       value = [value];
       unwrap = true;
     }
     const result = value.map( (o)=>{
-      if (o && o.toJSON) return o.toJSON(); 
-      else return {};
-    })
+      if (snapshot) {
+        // BUG: if asMS==true, we trigger ERROR: Expression has changed after it was checked
+        // BUG: if we return o.toJSON() then SimpleChange does NOT store snapshot.remaining.currentValue correctly
+        return o['snap'](false)
+      }
+      if (o && o.toJSON){ 
+        return o.toJSON(); 
+      } else {};
+    });
     return unwrap ? result[0] : result;
   }
 }
@@ -58,6 +64,7 @@ export interface TimerAttributes {
 
 export interface TimerInterface {
   id: string;
+  snapshot?: TimerAttributes;
   set: (opt: Duration | number) => Timer;
   start: ()=>Timer;
   check: ()=>number;

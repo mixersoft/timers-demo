@@ -17,13 +17,25 @@
 
 
     <ion-card  class="timer"
-      *ngFor="let snapshot of timers | toJSON"
+      *ngFor="let snapshot of timers | toJSON:true"
     > 
       <ion-card-content>
-        <ion-card-title>{{snapshot.humanize }}</ion-card-title>
+        <div class="timer-wrap">
+          <round-progress 
+            [current]="snapshot.remaining" 
+            [max]="snapshot.duration"
+            [rounded]="true"
+            [responsive]="true"
+            [duration]="800"
+            >
+          </round-progress>
+          <ion-card-title class="timer-wrap-center">{{snapshot.humanize}}</ion-card-title>
+        </div>
+        
+        
         <div class="card-subtitle">{{snapshot.label}}</div>
       </ion-card-content>
-      <ion-note>duration: {{snapshot.duration/1000 | number:0}}, remaining: {{snapshot.remaining/1000}}</ion-note>
+      <ion-note>duration: {{snapshot.duration | number:0}}, remaining: {{snapshot.remaining}}</ion-note>
       <button ion-button block icon-left 
         [color]="memo[snapshot.id]?.color" 
         (click)="timerClick(snapshot)"
