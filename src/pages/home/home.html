@@ -20,17 +20,19 @@
       *ngFor="let snapshot of timers | toJSON:true"
     > 
       <ion-card-content>
-        <div class="timer-wrap">
-          <round-progress 
-            [current]="snapshot.remaining" 
-            [max]="snapshot.duration"
-            [rounded]="true"
-            [responsive]="true"
-            [duration]="800"
-            >
-          </round-progress>
-          <ion-card-title class="timer-wrap-center">{{snapshot.humanize}}</ion-card-title>
-        </div>
+        <ion-row>
+          <ion-col class="timer-wrap" width-33 offset-33>
+            <round-progress 
+              [current]="snapshot.remaining" 
+              [max]="snapshot.duration"
+              [rounded]="true"
+              [responsive]="true"
+              [duration]="800"
+              >
+            </round-progress>
+            <ion-card-title class="timer-wrap-center">{{snapshot.humanize}}</ion-card-title>
+          </ion-col>
+        </ion-row>
         
         
         <div class="card-subtitle">{{snapshot.label}}</div>
