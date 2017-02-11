@@ -1,9 +1,9 @@
-// /// <reference path="../../node_modules/angular-svg-round-progressbar/dist/round-progress.d.ts" />
+
 
 import { Component } from '@angular/core';
 import { Platform } from 'ionic-angular';
 import { StatusBar, Splashscreen } from 'ionic-native';
-import { RoundProgressModule, RoundProgressConfig } from 'angular-svg-round-progressbar';
+import { RoundProgressConfig } from 'angular-svg-round-progressbar';
 
 import { TabsPage } from '../pages/tabs/tabs';
 
