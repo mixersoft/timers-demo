@@ -19,15 +19,46 @@ export function createTranslateLoader(http: Http) {
   return new TranslateStaticLoader(http, './assets/i18n', '.json');
 }
 
+/**
+ * The Pages array lists all of the pages we want to use in our app.
+ * We then take these pages and inject them into our NgModule so Angular
+ * can find them. As you add and remove pages, make sure to keep this list up to date.
+ */
+const pages = [
+  AboutPage,
+  ContactPage,
+  HomePage,
+  TabsPage,
+];
+
+const pipes = [
+  ToJsonPipe
+];
+
+export function declarations() {
+  let declarations : Array<any> = [MyApp];
+  declarations = declarations.concat(pages, pipes);
+  return declarations;
+}
+
+export function entryComponents() {
+  const entry : Array<any> = [MyApp];
+  return entry.concat(pages);
+}
+
+export function providers() {
+  return [
+    TimerService,
+
+    { provide: Settings, useFactory: provideSettings, deps: [ Storage ] },
+    // Keep this to enable Ionic's runtime error handling during development
+    { provide: ErrorHandler, useClass: IonicErrorHandler }
+  ];
+}
+
+
 @NgModule({
-  declarations: [
-    MyApp,
-    AboutPage,
-    ContactPage,
-    HomePage,
-    TabsPage
-    , ToJsonPipe
-  ],
+  declarations: declarations(),
   imports: [
     IonicModule.forRoot(MyApp)
     , RoundProgressModule
@@ -38,17 +69,7 @@ export function createTranslateLoader(http: Http) {
     })
   ],
   bootstrap: [IonicApp],
-  entryComponents: [
-    MyApp,
-    AboutPage,
-    ContactPage,
-    HomePage,
-    TabsPage
-  ],
-  providers: [
-    {provide: ErrorHandler, useClass: IonicErrorHandler}
-    , TimerService
-    // , RoundProgressConfig
-  ]
+  entryComponents: entryComponents(),
+  providers: providers()
 })
 export class AppModule {}
