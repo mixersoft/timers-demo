@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
-
 import { NavController } from 'ionic-angular';
+import { Storage } from '@ionic/storage';
 
 import { TimerAction, TimerEvent, Timer, TimerAttributes, TimerService } from '../../providers/index';
 
@@ -16,24 +16,52 @@ export class HomePage {
   constructor(
     public navCtrl: NavController
     , public timerSvc: TimerService
+    , public storage: Storage
   ) {
-    this.createTimers()
+    this.timerSvc.loadTimers().then(
+      (serializedTimers)=>{
+        console.info(serializedTimers);
+        Object.keys(serializedTimers).forEach(
+          (id)=>{
+            let timerAsJSON = serializedTimers[id];
+            timerAsJSON.duration /= 1000;
+            if (timerAsJSON.expires) {
+              timerAsJSON.remaining = timerAsJSON.expires - Date.now();
+              if (timerAsJSON.remaining < 0) return;
+            }
+
+            // re-create stored timer
+            const timer = this.timerSvc.create('Timer', timerAsJSON);
+            // restart running timer
+            if (timerAsJSON.expires) timer.start();
+
+            // persist Timer for HomePage
+            this.timers.push(timer);
+            this.memo[timer.id] = Object.assign({
+              subscription: timer.subscribe(this.timerObserver)
+            }, this.getButtonStyles(timer));
+          }
+        )
+        if (this.timers.length == 0) 
+          return Promise.reject(undefined);
+      }
+    ).catch( ()=>{
+      this.createTimers();
+    })
+  }
+
+  timerObserver = { 
+    next: (o:TimerEvent)=>{
+      console.log(`timer, id=${o.id} action=${TimerAction[o.action]}`,o);
+      const timer = this.timerSvc.get(o.id);
+      Object.assign( this.memo[o.id] ,  this.getButtonStyles(timer) );
+      if (o.action==TimerAction.Done) setTimeout(()=>{
+        // o.timer.complete()
+      },1000)
+    }
   }
 
   createTimers(){
-
-    const timerObserver = { 
-      next: (o:TimerEvent)=>{
-        console.log(`timer, id=${o.id} action=${TimerAction[o.action]}`,o);
-        const timer = this.timerSvc.get(o.id);
-        Object.assign( this.memo[o.id] ,  this.getButtonStyles(timer) );
-        if (o.action==TimerAction.Start &&  timer== t1) setTimeout(repeatSub,1000)
-        if (o.action==TimerAction.Done) setTimeout(()=>{
-          // o.timer.complete()
-        },1000)
-      }
-    }
-
 
     const t1 = this.timerSvc.setTimer(4);
     const t2 = this.timerSvc.create('BeepTimer', {
@@ -46,7 +74,7 @@ export class HomePage {
     [t1,t2].forEach( o=>{
       this.timers.push(o);
       this.memo[o.id] = Object.assign({
-        subscription: o.subscribe(timerObserver)
+        subscription: o.subscribe(this.timerObserver)
       }, this.getButtonStyles(o));
     });
 

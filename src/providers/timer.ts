@@ -30,7 +30,7 @@ export class Timer implements TimerInterface {
     this._subject = new Subject<TimerEvent>();
     const validKeys = {
         duration: ['duration', 'd','days','h','hours','m','minutes','s','seconds'],
-        attrs: ['onDone', 'label', 'sound']
+        attrs: ['onDone', 'label', 'sound', 'remaining']
     };
     const duration = _.pick(opt, validKeys.duration);
     this['duration'] = parseDurationMS(duration);

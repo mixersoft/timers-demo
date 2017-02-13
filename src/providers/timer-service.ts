@@ -1,5 +1,7 @@
 import { Injectable, Pipe, PipeTransform } from '@angular/core';
+import { Storage } from '@ionic/storage';
 import { Observer, Observable, Subject, Subscription } from "rxjs";
+
 import { Timer } from './timer'
 import { BeepTimer } from './beep-timer'
 import * as _ from 'lodash';
@@ -130,8 +132,9 @@ const TimerClasses = {
 export class TimerService {
   private _data: {[key:string] : Timer} = {}
   private _tickIntervalHandler: any;
+  private _TIMER_KEY = "_timer";
 
-  constructor( ) {
+  constructor(public storage?: Storage ) {
     console.log('Hello TimerService Provider');
   }
 
@@ -141,7 +144,54 @@ export class TimerService {
     return found;
   }
 
-  create(className: string       , opt: any) : Timer {
+  onTimerEvent(o:TimerEvent) {
+    this.tickIfTimerRunning(1000);
+    this.storeTimer(o);
+  }
+
+  /**
+   * save Timer to localStorage, so we can
+   * restore active timers as necessary
+   */
+  private storeTimer(o:TimerEvent) {
+    if (!this.storage) return;
+    this.storage.get(this._TIMER_KEY).then( 
+      (serializedTimers)=>{
+        serializedTimers = serializedTimers || {};
+        // save to storage
+        switch (o.action) {
+          case TimerAction.Set:
+          case TimerAction.Pause:
+          case TimerAction.Start:
+            const t = this.get(o.id);
+            if (t) {
+              const timerState: any = t.toJSON(true);
+              serializedTimers[t.id] = timerState;
+              this.storage.set(this._TIMER_KEY, serializedTimers);
+            }
+            break;
+          case TimerAction.Stop:
+          case TimerAction.Complete:
+            delete serializedTimers[o.id];
+            this.storage.set(this._TIMER_KEY, serializedTimers);
+            break;
+        }
+      }
+    );
+  }
+
+  loadTimers() : Promise<any>{
+    if (!this.storage) return Promise.reject({});
+    return this.storage.get(this._TIMER_KEY).then(
+      (serializedTimers)=>{
+        if (_.isEmpty(serializedTimers))
+          return Promise.reject(undefined);
+        return serializedTimers;
+      }
+    )
+  }
+
+  create(className: string, opt: any) : Timer {
     let found : Timer = this.get(opt);
     if (found===null) { 
       console.warn(`WARNING: this timer has been destroyed, id=${opt.id}`);
@@ -156,7 +206,9 @@ export class TimerService {
 
     const myTimer = new TimerClasses[className](opt.id, opt);
     const mySub = myTimer.subscribe({
-      next: (o)=>this.tickIfTimerRunning(1000),
+      next: (o:TimerEvent)=>{
+        this.onTimerEvent(o);
+      },
       complete: ()=>{
         mySub.unsubscribe();
         this._data[myTimer.id] = null;
@@ -192,7 +244,9 @@ export class TimerService {
 
     const myTimer = new Timer(id, duration);
     const mySub = myTimer.subscribe({
-      next: (o)=>this.tickIfTimerRunning(1000),
+      next: (o:TimerEvent)=>{
+        this.onTimerEvent(o);
+      },
       complete: ()=>{
         mySub.unsubscribe();
         this._data[myTimer.id] = null;
