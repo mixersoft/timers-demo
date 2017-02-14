@@ -39,6 +39,13 @@ export class Timer implements TimerInterface {
         this[k] = v;
     });
     this.snapshot = this.toJSON();  // initialize snapshot
+    // setTimeout(()=>{
+    //   this._subject.next({
+    //     action: TimerAction.Set,
+    //     value: this.duration,
+    //     id: this.id
+    //   });
+    // });
   }
 
 
@@ -79,11 +86,11 @@ export class Timer implements TimerInterface {
     this.onDone = callbacks['onDone'] || undefined;
   }
 
-  start() : Timer {
+  start(force:boolean=false) : Timer {
     if (this._isComplete) return this;
     if (this._isDone)  return this;
     if (this.isRunning()) return this;
-    if (this.remaining && this.remaining < 0) return this;
+    if (!force && this.remaining && this.remaining < 0) return this;
 
     if (!this.remaining) this.remaining = this.duration
     this.expires = Date.now() + this.remaining;

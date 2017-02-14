@@ -30,6 +30,8 @@ export function provideSettings(storage: Storage) {
    */
   return new Settings(storage, {
     // default key: value pairs
+    RESTORE_EXPIRED_TIMERS: true,
+    RESTORE_EXPIRED_TIMER_LIMIT: 5*60*1000
   });
 }
 

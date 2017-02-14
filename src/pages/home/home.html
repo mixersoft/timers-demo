@@ -39,11 +39,11 @@
       </ion-card-content>
       <ion-note>duration: {{snapshot.duration | number:0}}, remaining: {{snapshot.remaining}}</ion-note>
       <button ion-button block icon-left 
-        [color]="memo[snapshot.id]?.color" 
+        [color]="timerRenderAttrs[snapshot.id]?.color" 
         (click)="timerClick(snapshot)"
       >
-        <ion-icon [name]="memo[snapshot.id]?.icon" ></ion-icon>
-        {{memo[snapshot.id]?.label}}
+        <ion-icon [name]="timerRenderAttrs[snapshot.id]?.icon" ></ion-icon>
+        {{timerRenderAttrs[snapshot.id]?.label}}
       </button>
     </ion-card>
 

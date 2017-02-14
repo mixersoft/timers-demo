@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-
 import { Storage } from '@ionic/storage';
 
 /**
@@ -22,7 +21,7 @@ export class Settings {
     return this.storage.get(this.SETTINGS_KEY).then((value) => {
       if(value) {
         this.settings = value;
-        this._mergeDefaults(this._defaults);
+        return this._mergeDefaults(this._defaults);
       } else {
         return this.setAll(this._defaults).then((val) => {
           this.settings = val;
@@ -58,9 +57,13 @@ export class Settings {
 
   getValue(key: string) {
     return this.storage.get(this.SETTINGS_KEY)
-      .then(settings => {
+    .then(settings => {
+        if (!settings) 
+            return this.load().then( ()=> {
+                return this.settings[key];
+            });
         return settings[key];
-      });
+    });
   }
 
   save() {

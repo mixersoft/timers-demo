@@ -180,7 +180,10 @@ export class TimerService {
     );
   }
 
-  loadTimers() : Promise<any>{
+  /**
+   * load Timers from Storage
+   */
+  loadTimersFromStorage() : Promise<any>{
     if (!this.storage) return Promise.reject({});
     return this.storage.get(this._TIMER_KEY).then(
       (serializedTimers)=>{
@@ -189,6 +192,13 @@ export class TimerService {
         return serializedTimers;
       }
     )
+  }
+
+  /**
+   * clear Timers from Storage
+   */
+  clearStorage() {
+    this.storage.set(this._TIMER_KEY, undefined);
   }
 
   create(className: string, opt: any) : Timer {

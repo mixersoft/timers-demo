@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
-import { NavController } from 'ionic-angular';
+import { Config, NavController } from 'ionic-angular';
 import { Storage } from '@ionic/storage';
 
+import { Settings } from '../../providers/settings';
 import { TimerAction, TimerEvent, Timer, TimerAttributes, TimerService } from '../../providers/index';
 
 
@@ -11,58 +12,101 @@ import { TimerAction, TimerEvent, Timer, TimerAttributes, TimerService } from '.
 })
 export class HomePage {
   timers: Timer[] = [];
-  memo: {[key:string]:any} = {};
+  /**
+   * cache render attrs for each Timer, update on each TimerEvent
+   */
+  timerRenderAttrs: {[key:string]:any} = {};
+
+  private RESTORE_EXPIRED_TIMERS = true;
+  private RESTORE_EXPIRED_TIMER_LIMIT = 5*60*1000;
 
   constructor(
     public navCtrl: NavController
     , public timerSvc: TimerService
     , public storage: Storage
+    , public config: Config
+    , public settings: Settings
   ) {
-    this.timerSvc.loadTimers().then(
-      (serializedTimers)=>{
-        console.info(serializedTimers);
+
+  }
+
+  /**
+   * reload Timers from Storage, use 
+   * `?ionicSkipReload=true` to force demoCreateTimers()
+   */
+  ionViewDidLoad(){
+    const skipReload : string = this.config.get('skipReload');
+    if (skipReload){
+      this.timerSvc.clearStorage();
+      return this.demoCreateTimers();
+    }
+
+    this.settings.load()
+    .then( (settings)=>{
+      ['RESTORE_EXPIRED_TIMERS', 'RESTORE_EXPIRED_TIMER_LIMIT'].forEach( (k)=>{
+        this[k] = settings[k];
+      })
+      return this.timerSvc.loadTimersFromStorage()
+    })
+    .then( (serializedTimers)=>{
+        // clearStorage before restoring timers
+        this.timerSvc.clearStorage();
+
         Object.keys(serializedTimers).forEach(
           (id)=>{
-            let timerAsJSON = serializedTimers[id];
-            timerAsJSON.duration /= 1000;
-            if (timerAsJSON.expires) {
-              timerAsJSON.remaining = timerAsJSON.expires - Date.now();
-              if (timerAsJSON.remaining < 0) return;
-            }
-
-            // re-create stored timer
-            const timer = this.timerSvc.create('Timer', timerAsJSON);
-            // restart running timer
-            if (timerAsJSON.expires) timer.start();
-
-            // persist Timer for HomePage
-            this.timers.push(timer);
-            this.memo[timer.id] = Object.assign({
-              subscription: timer.subscribe(this.timerObserver)
-            }, this.getButtonStyles(timer));
+            let timer = this.restoreTimer(serializedTimers[id]);
+            this.renderTimer(timer);
           }
         )
+        // check if all restored timers have expired
         if (this.timers.length == 0) 
           return Promise.reject(undefined);
-      }
-    ).catch( ()=>{
-      this.createTimers();
+    })
+    .catch( ()=>{
+      this.demoCreateTimers();
     })
   }
 
+  /**
+   * observers for Timer.subscribe()
+   */
   timerObserver = { 
     next: (o:TimerEvent)=>{
       console.log(`timer, id=${o.id} action=${TimerAction[o.action]}`,o);
       const timer = this.timerSvc.get(o.id);
-      Object.assign( this.memo[o.id] ,  this.getButtonStyles(timer) );
+      Object.assign( this.timerRenderAttrs[o.id] ,  this.getButtonStyles(timer) );
       if (o.action==TimerAction.Done) setTimeout(()=>{
         // o.timer.complete()
       },1000)
     }
   }
 
-  createTimers(){
+  /**
+   * restore timer from timer.toJSON(), 
+   * use to restore timers from Storage
+   */
+  restoreTimer(timerAsJSON: TimerAttributes) : Timer {
+    timerAsJSON.duration /= 1000;
+    if (timerAsJSON.expires) {
+      timerAsJSON.remaining = timerAsJSON.expires - Date.now();
+      const isExpired = timerAsJSON.remaining < 0;
+      if (isExpired && !this.RESTORE_EXPIRED_TIMERS ) {
+        return;
+      }
+      if (isExpired && -1*timerAsJSON.remaining > this.RESTORE_EXPIRED_TIMER_LIMIT) {
+        return;
+      }
+    }
 
+    // re-create stored timer
+    const timer = this.timerSvc.create('Timer', timerAsJSON);
+    // restart running timer, force restart if timerAsJSON.remaining < 0
+    if (timerAsJSON.expires) timer.start(true);
+    return timer;
+  }
+
+
+  demoCreateTimers(){
     const t1 = this.timerSvc.setTimer(4);
     const t2 = this.timerSvc.create('BeepTimer', {
       'minutes':3,
@@ -72,10 +116,7 @@ export class HomePage {
       }
     });
     [t1,t2].forEach( o=>{
-      this.timers.push(o);
-      this.memo[o.id] = Object.assign({
-        subscription: o.subscribe(this.timerObserver)
-      }, this.getButtonStyles(o));
+      this.renderTimer(o);
     });
 
     t2.chain(t1);
@@ -107,7 +148,22 @@ export class HomePage {
 
   }
 
-  
+
+  /**
+   * connect Timer to view variables for proper rendering
+   */
+  renderTimer(timer:Timer){
+    if (!timer) return;
+    // connect timer to view
+    this.timers.push(timer);
+    this.timerRenderAttrs[timer.id] = Object.assign({
+      subscription: timer.subscribe(this.timerObserver)
+    }, this.getButtonStyles(timer));
+  }  
+
+  /**
+   * update Timer render properties on create and each TimerEvent
+   */
   getButtonStyles(timer: Timer):any{
     // if (!timer) return {}
     let timerAsJSON = timer.toJSON();
