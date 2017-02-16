@@ -3,7 +3,7 @@ import { Config, NavController } from 'ionic-angular';
 import { Storage } from '@ionic/storage';
 
 import { Settings } from '../../providers/settings';
-import { TimerAction, TimerEvent, Timer, TimerAttributes, TimerService } from '../../providers/index';
+import { TimerAction, TimerEvent, BeepTimer, Timer, TimerAttributes, TimerService } from '../../providers/index';
 
 
 @Component({
@@ -81,6 +81,15 @@ export class HomePage {
     }
   }
 
+  timerCallbacks = {
+    onDone: (t:Timer)=>{
+      console.info(`callback onDone() DONE, id=${t.id}, duration=${t.getDuration()}`);
+    },
+    onBeep: (t:Timer)=>{
+      console.info(`callback onBeep() BEEP, id=${t.id}, remaining=${t.check()}`);
+    }
+  }
+
   /**
    * restore timer from timer.toJSON(), 
    * use to restore timers from Storage
@@ -99,7 +108,9 @@ export class HomePage {
     }
 
     // re-create stored timer
-    const timer = this.timerSvc.create('Timer', timerAsJSON);
+    const timer = this.timerSvc.create(timerAsJSON.className, timerAsJSON);
+    if (timer instanceof BeepTimer)
+      timer.setCallbacks(this.timerCallbacks);
     // restart running timer, force restart if timerAsJSON.remaining < 0
     if (timerAsJSON.expires) timer.start(true);
     return timer;
@@ -107,33 +118,28 @@ export class HomePage {
 
 
   demoCreateTimers(){
-    const t1 = this.timerSvc.setTimer(4);
+    const t1 = this.timerSvc.setTimer(60);
     const t2 = this.timerSvc.create('BeepTimer', {
-      'minutes':3,
+      'minutes':1,
       'beepInterval': {
-        initial: { seconds: 2},
-        duration: { seconds: 5}
+        // initial: { seconds: 2},
+        duration: { seconds: 10}
       }
     });
-    [t1,t2].forEach( o=>{
+    const t3 = this.timerSvc.setTimer(10);
+    const t4 = this.timerSvc.setTimer(20*60);
+
+    [t1,t2,t3,t4].forEach( o=>{
       this.renderTimer(o);
     });
+    
 
     t2.chain(t1);
 
-    t2.setCallbacks({
-      'onDone':(t:Timer)=>{
-        console.info(`timer2 onDone() DONE, id=${t.id}, duration=${t.getDuration()}`);
-      },
-      'onBeep':(t:Timer)=>{
-        console.info(`timer2 onBeep() BEEP, id=${t.id}, remaining=${t.check()}`);
-      }
-    })
+    t2.setCallbacks(this.timerCallbacks)
 
     t1.setCallbacks({
-      'onDone': (t:Timer)=>{
-        console.info(`timer onDone() DONE, id=${t.id}, duration=${t.getDuration()}`);
-      }
+      'onDone': this.timerCallbacks.onDone
     })
 
     const repeatSub = ()=>{
@@ -155,10 +161,12 @@ export class HomePage {
   renderTimer(timer:Timer){
     if (!timer) return;
     // connect timer to view
+    timer.snap(true);
     this.timers.push(timer);
     this.timerRenderAttrs[timer.id] = Object.assign({
       subscription: timer.subscribe(this.timerObserver)
     }, this.getButtonStyles(timer));
+    
   }  
 
   /**

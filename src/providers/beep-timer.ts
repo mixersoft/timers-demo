@@ -5,7 +5,7 @@ import * as moment from 'moment';
 
 import { 
     // interfaces
-    optTimer, optBeepTimer, Duration, BeepInterval,  
+    optTimer, optBeepTimer, Duration, BeepInterval, TimerAttributes, 
     // classes   
     // methods
     parseDurationMS, 
@@ -73,6 +73,10 @@ export class BeepTimer extends Timer {
                 if (this.onBeep) this.onBeep(this);
             });
         }
+    }
+
+    toJSON(asMS=false) : TimerAttributes {
+        return Object.assign(super.toJSON(asMS), {beepInterval: this.beepInterval})
     }
 
     /**

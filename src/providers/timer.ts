@@ -155,6 +155,7 @@ export class Timer implements TimerInterface {
     const remaining = this.check(asMS);
     // console.log(this.id, this.duration, remaining)
     return {
+      className: (<any>this).constructor.name,
       id: this.id,
       label: this.label,
       // asMilliseconds

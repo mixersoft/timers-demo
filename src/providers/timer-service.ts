@@ -71,6 +71,9 @@ export interface TimerAttributes {
   remaining: number;
   humanize: string;
   expires: number;
+  // for restoring the correct class
+  className: string;
+  beepInterval?: number;
 }
 
 export interface TimerInterface {
@@ -153,6 +156,9 @@ export class TimerService {
     return found;
   }
 
+  /**
+   * event handler for any TimerEvent
+   */
   onTimerEvent(o:TimerEvent) {
     this.tickIfTimerRunning(1000);
     this.storeTimer(o);
@@ -288,12 +294,14 @@ export class TimerService {
           // run digest loop
           return;
           
-          // const display = {};
+          /**
+           * TEST: timer without ngFor, update snapshot here,
+           * instead of in TimerSnapshotPipe
+           */
           // Object.keys(this._data).forEach( k=>{
-          //   const t = this._data[k];
-          //   display[t.id] = t.check()
+          //   const timer = this._data[k];
+          //   if (timer.isRunning()) timer.snap(true);
           // })
-          // console.log("tick",display)
         }
         , interval
       )
