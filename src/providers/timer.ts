@@ -39,13 +39,6 @@ export class Timer implements TimerInterface {
         this[k] = v;
     });
     this.snapshot = this.toJSON();  // initialize snapshot
-    // setTimeout(()=>{
-    //   this._subject.next({
-    //     action: TimerAction.Set,
-    //     value: this.duration,
-    //     id: this.id
-    //   });
-    // });
   }
 
 
@@ -176,12 +169,19 @@ export class Timer implements TimerInterface {
 
 
   /**
-   * BUG: trying to get SimpleChange to capture this.snapshot.remaining.previousValue
-   * WITHOUT causing Error: Expression has changed after it was checked
+   * capture snapshot of Timer for View rendering
    */
   snap(asMS=false): TimerAttributes {
-    Object.assign( this.snapshot, this.toJSON(asMS))
+    asMS == false;
+    const snapshot = this.toJSON(asMS);
+    if (asMS){
+      snapshot.duration = Math.floor(snapshot.duration/10)/100;
+      snapshot.remaining = Math.floor(snapshot.remaining/10)/100;
+    }
+    Object.assign( this.snapshot, snapshot);
+    // if (snapshot.remaining > 100) console.log(`snapshot.remaining=${snapshot.remaining}`);
     return this.snapshot;
+
   }
 
   /**

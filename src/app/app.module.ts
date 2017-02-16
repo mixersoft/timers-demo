@@ -11,7 +11,7 @@ import { HomePage } from '../pages/home/home';
 import { TabsPage } from '../pages/tabs/tabs';
 
 import { Settings } from '../providers/settings';
-import { TimerService, ToJsonPipe } from '../providers/timer-service';
+import { TimerService, TimerSnapshotPipe } from '../providers/timer-service';
 
 import { TranslateModule, TranslateLoader, TranslateStaticLoader } from 'ng2-translate/ng2-translate';
 
@@ -49,7 +49,7 @@ const pages = [
 ];
 
 const pipes = [
-  ToJsonPipe
+  TimerSnapshotPipe
 ];
 
 export function declarations() {

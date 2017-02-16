@@ -19,21 +19,30 @@ interface JSONSerializable {
 
 @Pipe({name: 'toJSON', pure: false})
 export class ToJsonPipe implements PipeTransform {
-  transform(value: JSONSerializable | Array<JSONSerializable>, snapshot:boolean ): any | Array<any> { 
+  transform(value: JSONSerializable | Array<JSONSerializable>): any | Array<any> { 
+    let unwrap = false;
+    if (!Array.isArray(value)) {
+      value = [value];
+      unwrap = true;
+    }
+    const result = value.map( (o)=> o ? o.toJSON() : {} );
+    return unwrap ? result[0] : result;
+  }
+}
+
+/**
+ * capture snapshot of Timer for quick and stable View rendering
+ */
+@Pipe({name: 'snapshot', pure: false})
+export class TimerSnapshotPipe implements PipeTransform {
+  transform(value: Timer | Array<Timer>, asMS: boolean = false): TimerAttributes | Array<TimerAttributes> | any { 
     let unwrap = false;
     if (!Array.isArray(value)) {
       value = [value];
       unwrap = true;
     }
     const result = value.map( (o)=>{
-      if (snapshot) {
-        // BUG: if asMS==true, we trigger ERROR: Expression has changed after it was checked
-        // BUG: if we return o.toJSON() then SimpleChange does NOT store snapshot.remaining.currentValue correctly
-        return o['snap'](false)
-      }
-      if (o && o.toJSON){ 
-        return o.toJSON(); 
-      } else {};
+      return o ? o.snap(asMS)  : {};
     });
     return unwrap ? result[0] : result;
   }

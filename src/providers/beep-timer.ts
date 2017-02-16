@@ -36,7 +36,7 @@ export class BeepTimer extends Timer {
     getBeepInterval(options:BeepInterval = {}) : [number, number] {
         let interval: number;
         let {initial, frequency, duration} = options;
-        let initialDelay : number = parseDurationMS(initial) || 0;
+        let initialDelay : number = parseDurationMS(initial || 0);
         let adjDuration = this.duration - interval;
         if (frequency)
             interval = adjDuration/frequency

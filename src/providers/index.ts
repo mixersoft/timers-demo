@@ -6,12 +6,12 @@ import {
   optTimer, optBeepTimer, Duration, BeepInterval, 
   BeepTimer, Timer, TimerAttributes, TimerService,
   TimerAction, TimerEvent,
-  ToJsonPipe
+  ToJsonPipe, TimerSnapshotPipe
 } from './timer-service';
 
 export {
   optTimer, optBeepTimer, Duration, BeepInterval,
   BeepTimer, Timer, TimerAttributes, TimerService, 
   TimerAction, TimerEvent,
-  ToJsonPipe
+  ToJsonPipe, TimerSnapshotPipe
 };
