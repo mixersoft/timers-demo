@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { Config, NavController } from 'ionic-angular';
 import { Storage } from '@ionic/storage';
+import * as _ from 'lodash';
 
 import { Settings } from '../../providers/settings';
 import { TimerAction, TimerEvent, BeepTimer, Timer, TimerAttributes, TimerService } from '../../providers/index';
@@ -163,6 +164,7 @@ export class HomePage {
     // connect timer to view
     timer.snap(true);
     this.timers.push(timer);
+    this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
     this.timerRenderAttrs[timer.id] = Object.assign({
       subscription: timer.subscribe(this.timerObserver)
     }, this.getButtonStyles(timer));
