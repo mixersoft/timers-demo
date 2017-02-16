@@ -12,7 +12,9 @@ import { TimerAction, TimerEvent, BeepTimer, Timer, TimerAttributes, TimerServic
   templateUrl: 'home.html'
 })
 export class HomePage {
+  TICK_INTERVAL = 500;    // milliseconds
   timers: Timer[] = [];
+  snapshots: Array<TimerAttributes> = [];
   /**
    * cache render attrs for each Timer, update on each TimerEvent
    */
@@ -28,7 +30,14 @@ export class HomePage {
     , public config: Config
     , public settings: Settings
   ) {
+    const self = this;
+    const tick = function(){
+      this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
+      self.snapshots = self.timers.map( (t)=>t.snap(true)  );
+      return;
+    }
 
+    this.timerSvc.setOnTick( tick, 100 );
   }
 
   /**
@@ -165,6 +174,7 @@ export class HomePage {
     timer.snap(true);
     this.timers.push(timer);
     this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
+    this.snapshots = this.timers.map( t=>t.snap(true) );
     this.timerRenderAttrs[timer.id] = Object.assign({
       subscription: timer.subscribe(this.timerObserver)
     }, this.getButtonStyles(timer));

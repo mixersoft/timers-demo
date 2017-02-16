@@ -144,6 +144,8 @@ const TimerClasses = {
 export class TimerService {
   private _data: {[key:string] : Timer} = {}
   private _tickIntervalHandler: any;
+  private tickInterval: number = 1000;
+  private onTick: ()=>void;         // setInterval() handler in ViewController
   private _TIMER_KEY = "_timer";
 
   constructor(public storage?: Storage ) {
@@ -160,7 +162,7 @@ export class TimerService {
    * event handler for any TimerEvent
    */
   onTimerEvent(o:TimerEvent) {
-    this.tickIfTimerRunning(1000);
+    this.tickIfTimerRunning();
     this.storeTimer(o);
   }
 
@@ -282,28 +284,28 @@ export class TimerService {
 
 
   /**
-   * update display every [interval] MS if any timer is running
-   * called on every action by child timers
+   * callback function in View to update Timer snaphsots on each tickInterval (MS)
+   * @param interval, setInterval() is called with interval MS when any Timer is running
    */
-  protected tickIfTimerRunning(interval:number = 1000){
+  setOnTick(onTick:()=>void, interval: number = 1000){
+    this.tickInterval = interval;
+    this.onTick = onTick;
+  }
+
+  /**
+   * start ticking if any Timer is running, 
+   * calls the onTick callback function every tickInterval MS
+   * cleared when no Timers are running
+   */
+  protected tickIfTimerRunning(){
     const isRunning = Object.keys(this._data).find( (k)=>{
       return this._data[k] && this._data[k].isRunning()
     })
     if (isRunning && !this._tickIntervalHandler) {
       this._tickIntervalHandler = setInterval( ()=>{
-          // run digest loop
-          return;
-          
-          /**
-           * TEST: timer without ngFor, update snapshot here,
-           * instead of in TimerSnapshotPipe
-           */
-          // Object.keys(this._data).forEach( k=>{
-          //   const timer = this._data[k];
-          //   if (timer.isRunning()) timer.snap(true);
-          // })
+          this.onTick && this.onTick();
         }
-        , interval
+        , this.tickInterval
       )
     } else if (!isRunning && this._tickIntervalHandler){
       clearInterval(this._tickIntervalHandler);
