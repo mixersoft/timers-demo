@@ -18,7 +18,10 @@
   
   <!-- cordova.js required for cordova apps -->
   <script src="cordova.js"></script>
-
+  <script>
+    window.$dbg = window.$dbg || {};
+    Object.assign(window.$dbg, {bootstrap:Date.now()});
+  </script>
   <!--un-comment this code to enable service worker-->
   <script>
     if ('serviceWorker' in navigator) {
