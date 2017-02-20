@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { Config, NavController } from 'ionic-angular';
+import { Config, NavController, ToastController } from 'ionic-angular';
 import { Storage } from '@ionic/storage';
 import * as _ from 'lodash';
 
@@ -29,6 +29,7 @@ export class HomePage {
     , public storage: Storage
     , public config: Config
     , public settings: Settings
+    , public toast: ToastController
   ) {
     const self = this;
     const tick = function(){
@@ -40,15 +41,29 @@ export class HomePage {
     this.timerSvc.setOnTick( tick, 100 );
   }
 
+  ionViewDidEnter(){
+    console.log('ionViewDidEnter');
+    const start = window['$dbg'].bootstrap;
+    const msg = `bootstrap (ionViewDidEnter), elapsedMS=${Date.now() - start}`;
+    console.log(msg);
+    const toast = this.toast.create({
+      message:  msg,
+      duration: 3000
+    });
+    toast.present();
+  }
+
   /**
    * reload Timers from Storage, use 
    * `?ionicSkipReload=true` to force demoCreateTimers()
    */
   ionViewDidLoad(){
+    // console.info('ionViewDidLoad');
     const skipReload : string = this.config.get('skipReload');
     if (skipReload){
       this.timerSvc.clearStorage();
-      return this.demoCreateTimers();
+      this.demoCreateTimers();
+      return;
     }
 
     this.settings.load()
@@ -59,8 +74,16 @@ export class HomePage {
       return this.timerSvc.loadTimersFromStorage()
     })
     .then( (serializedTimers)=>{
+
         // clearStorage before restoring timers
         this.timerSvc.clearStorage();
+
+        const toast = this.toast.create({
+          message:  "restoring Timers",
+          duration: 3000,
+          position: "top"
+        });
+        toast.present();
 
         Object.keys(serializedTimers).forEach(
           (id)=>{
@@ -76,6 +99,7 @@ export class HomePage {
       this.demoCreateTimers();
     })
   }
+
 
   /**
    * observers for Timer.subscribe()
@@ -221,6 +245,11 @@ export class HomePage {
     const timer: Timer = this.timerSvc.get(snapshot.id);
     const action = this.getButtonStyles(timer).action
     timer[action]();
+    const toast = this.toast.create({
+      message:  `${action}`,
+      duration: 3000
+    });
+    toast.present();    
 
   }
 
