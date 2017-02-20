@@ -50,7 +50,7 @@ export class Timer implements TimerInterface {
     if (this._isComplete) return this;
 
     if (opt){
-      this.duration = parseDurationMS(opt);
+      this.duration = Math.max(parseDurationMS(opt), 0);
     }
 
     this.remaining = null;
@@ -58,6 +58,7 @@ export class Timer implements TimerInterface {
     this._isDone = false;
     if (onDone) this.onDone = onDone;
 
+    // debounce
     this._subject.next({
       action: TimerAction.Set,
       value: this.duration,
@@ -170,14 +171,20 @@ export class Timer implements TimerInterface {
 
 
   /**
-   * capture snapshot of Timer for View rendering
+   * capture snapshot of Timer for View rendering, in seconds
    */
-  snap(asMS=false): TimerAttributes {
-    asMS == false;
+  snap(precision: number = 0): TimerAttributes {
+    const asMS = precision > 0;
     const snapshot = this.toJSON(asMS);
-    if (asMS){
-      snapshot.duration = Math.floor(snapshot.duration/10)/100;
-      snapshot.remaining = Math.floor(snapshot.remaining/10)/100;
+    switch(precision){
+      case 2:
+        snapshot.duration = Math.floor(snapshot.duration/10)/100;
+        snapshot.remaining = Math.floor(snapshot.remaining/10)/100;
+        break;
+      case 1:
+        snapshot.duration = Math.floor(snapshot.duration/100)/10;
+        snapshot.remaining = Math.floor(snapshot.remaining/100)/10;
+        break;
     }
     Object.assign( this.snapshot, snapshot);
     // if (snapshot.remaining > 100) console.log(`snapshot.remaining=${snapshot.remaining}`);

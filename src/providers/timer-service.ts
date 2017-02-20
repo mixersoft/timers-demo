@@ -42,7 +42,7 @@ export class TimerSnapshotPipe implements PipeTransform {
       unwrap = true;
     }
     const result = value.map( (o)=>{
-      return o ? o.snap(asMS)  : {};
+      return o ? o.snap(2)  : {};
     });
     return unwrap ? result[0] : result;
   }

@@ -33,7 +33,7 @@ export class HomePage {
     const self = this;
     const tick = function(){
       this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
-      self.snapshots = self.timers.map( (t)=>t.snap(true)  );
+      self.snapshots = self.timers.map( (t)=>t.snap(1)  );
       return;
     }
 
@@ -97,6 +97,10 @@ export class HomePage {
     },
     onBeep: (t:Timer)=>{
       console.info(`callback onBeep() BEEP, id=${t.id}, remaining=${t.check()}`);
+    },
+    onTick: ()=>{
+      this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
+      this.snapshots = this.timers.map( (t)=>t.snap(1)  );
     }
   }
 
@@ -171,10 +175,10 @@ export class HomePage {
   renderTimer(timer:Timer){
     if (!timer) return;
     // connect timer to view
-    timer.snap(true);
+    timer.snap();
     this.timers.push(timer);
     this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
-    this.snapshots = this.timers.map( t=>t.snap(true) );
+    this.snapshots = this.timers.map( t=>t.snap() );
     this.timerRenderAttrs[timer.id] = Object.assign({
       subscription: timer.subscribe(this.timerObserver)
     }, this.getButtonStyles(timer));
@@ -218,6 +222,30 @@ export class HomePage {
     const action = this.getButtonStyles(timer).action
     timer[action]();
 
+  }
+
+  onRotate(ev){
+    console.log("guesture=",ev.type);
+  }
+  onPan(ev, snapshot){
+    const timer = this.timerSvc.get(snapshot.id);
+    if (timer.isRunning()) return;
+    let deltaT: number;
+    // snapshot.duration += deltaT;
+    switch (ev.additionalEvent){
+      case "panright":
+        deltaT =  ev.deltaX // * Math.abs(ev.velocityX)
+        timer.set(deltaT + snapshot.duration);
+        break;
+      case "panleft":
+        // convert to % 
+        deltaT = ev.deltaX;
+        break;
+
+    }
+    console.log(`${deltaT}, ${snapshot.duration} = ${timer.getDuration()/1000}`);
+    let snap = this.snapshots.find( (v)=>v.id == timer.id )
+    snap = timer.snap(1);
   }
 
 }
