@@ -46,11 +46,13 @@ export class HomePage {
     const start = window['$dbg'].bootstrap;
     const msg = `bootstrap (ionViewDidEnter), elapsedMS=${Date.now() - start}`;
     console.log(msg);
-    const toast = this.toast.create({
-      message:  msg,
-      duration: 3000
-    });
-    toast.present();
+    if (Settings.DEBUG){
+      const toast = this.toast.create({
+        message:  msg,
+        duration: 3000
+      });
+      toast.present();
+    }
   }
 
   /**
@@ -77,13 +79,14 @@ export class HomePage {
 
         // clearStorage before restoring timers
         this.timerSvc.clearStorage();
-
-        const toast = this.toast.create({
-          message:  "restoring Timers",
-          duration: 3000,
-          position: "top"
-        });
-        toast.present();
+        if (Settings.DEBUG){
+          const toast = this.toast.create({
+            message:  "restoring Timers",
+            duration: 3000,
+            position: "top"
+          });
+          toast.present();
+        }
 
         Object.keys(serializedTimers).forEach(
           (id)=>{
@@ -245,11 +248,13 @@ export class HomePage {
     const timer: Timer = this.timerSvc.get(snapshot.id);
     const action = this.getButtonStyles(timer).action
     timer[action]();
-    const toast = this.toast.create({
-      message:  `${action}`,
-      duration: 3000
-    });
-    toast.present();    
+    if (Settings.DEBUG){
+      const toast = this.toast.create({
+        message:  `${action}`,
+        duration: 3000
+      });
+      toast.present();    
+    }
 
   }
 
