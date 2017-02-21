@@ -115,6 +115,9 @@ export class HomePage {
       if (o.action==TimerAction.Done) setTimeout(()=>{
         // o.timer.complete()
       },1000)
+    },
+    complete: ()=>{
+      // skip
     }
   }
 
@@ -172,16 +175,17 @@ export class HomePage {
 
     [t1,t2,t3,t4].forEach( o=>{
       this.renderTimer(o);
+      o.setCallbacks(this.timerCallbacks);
     });
     
 
     t2.chain(t1);
 
-    t2.setCallbacks(this.timerCallbacks)
+    // t2.setCallbacks(this.timerCallbacks)
 
-    t1.setCallbacks({
-      'onDone': this.timerCallbacks.onDone
-    })
+    // t1.setCallbacks({
+    //   'onDone': this.timerCallbacks.onDone
+    // })
 
     const repeatSub = ()=>{
       const anotherSub = t1.subscribe({
@@ -256,6 +260,15 @@ export class HomePage {
       toast.present();    
     }
 
+  }
+
+  resetTimers(){
+    const result = this.timers.map((t)=>{
+      t.complete();
+    });
+    this.timers = [];
+    this.timerSvc.clearStorage();
+    this.demoCreateTimers();
   }
 
   onRotate(ev){

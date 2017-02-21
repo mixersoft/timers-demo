@@ -218,6 +218,12 @@ export class TimerService {
     this.storage.set(this._TIMER_KEY, undefined);
   }
 
+  map( cb:(t:Timer)=>any ) {
+    Object.keys(this._data).forEach( (id)=>{
+      return cb(this._data[id]);
+    })
+  }
+
   create(className: string, opt: any) : Timer {
     let found : Timer = this.get(opt);
     if (found===null) { 
