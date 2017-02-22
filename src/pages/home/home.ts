@@ -31,14 +31,7 @@ export class HomePage {
     , public settings: Settings
     , public toast: ToastController
   ) {
-    const self = this;
-    const tick = function(){
-      this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
-      self.snapshots = self.timers.map( (t)=>t.snap(1)  );
-      return;
-    }
-
-    this.timerSvc.setOnTick( tick, 100 );
+    this.timerSvc.setOnTick( this.timerCallbacks.onTick, 100 );
   }
 
   ionViewDidEnter(){
@@ -117,20 +110,43 @@ export class HomePage {
       },1000)
     },
     complete: ()=>{
-      // skip
+      // TODO: animate remove timer
+      const toRemove = this.timerSvc.getComplete();
+      toRemove.forEach( (id)=>{
+        this.removeTimer(id, true);
+      })
+      this.sortTimers();
     }
   }
 
   timerCallbacks = {
     onDone: (t:Timer)=>{
-      console.info(`callback onDone() DONE, id=${t.id}, duration=${t.getDuration()}`);
+      console.info(`callback onDone() DONE, id=${t.id}, duration=${t.snapshot.duration}`);
     },
     onBeep: (t:Timer)=>{
       console.info(`callback onBeep() BEEP, id=${t.id}, remaining=${t.check()}`);
     },
     onTick: ()=>{
-      this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
-      this.snapshots = this.timers.map( (t)=>t.snap(1)  );
+      this.sortTimers();
+    }
+  }
+
+  sortTimers() {
+    // TODO: sortBy multiple, nested properties
+    // this.timers = _.sortBy(this.timers, ['snapshot.remaining', 'snapshot.duration']);
+    this.snapshots = this.timers.map( (t)=>t.snap(1));
+    this.snapshots = _.sortBy(this.snapshots, ['remaining', 'duration']);
+  }
+
+  removeTimer(id:string, deferSort:boolean=false){
+    const i = this.timers.findIndex( (o)=>o.id == id )
+    if (i > -1){
+      const t = this.timers[i];
+      console.warn("removing Timer.id=", t.id);
+      this.timers.splice(i,1);
+      if (deferSort===false){
+        this.sortTimers();
+      }
     }
   }
 
@@ -162,7 +178,7 @@ export class HomePage {
 
 
   demoCreateTimers(){
-    const t1 = this.timerSvc.setTimer(60);
+    const t1 = this.timerSvc.setTimer(6);
     const t2 = this.timerSvc.create('BeepTimer', {
       'minutes':1,
       'beepInterval': {
@@ -187,15 +203,18 @@ export class HomePage {
     //   'onDone': this.timerCallbacks.onDone
     // })
 
-    const repeatSub = ()=>{
+    const repeatSub = (t1:Timer)=>{
+      console.info("repeatSub for id=", t1.id);
       const anotherSub = t1.subscribe({
-        next: (t)=>console.info(`2nd timer1 subscr, id=${t.id}`,t),
+        next: (t)=>console.info(`repeatSub notified, id=${t.id}`,t),
         complete: ()=>{
           console.warn(`timer COMPLETE`),
           anotherSub.unsubscribe();
         }
       })
     }
+
+    repeatSub(t1);
 
   }
 
@@ -208,8 +227,10 @@ export class HomePage {
     // connect timer to view
     timer.snap();
     this.timers.push(timer);
-    this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
-    this.snapshots = this.timers.map( t=>t.snap() );
+    
+    // create and sort snapshots
+    this.sortTimers();
+
     this.timerRenderAttrs[timer.id] = Object.assign({
       subscription: timer.subscribe(this.timerObserver)
     }, this.getButtonStyles(timer));
@@ -220,8 +241,8 @@ export class HomePage {
    * update Timer render properties on create and each TimerEvent
    */
   getButtonStyles(timer: Timer):any{
-    // if (!timer) return {}
-    let timerAsJSON = timer.toJSON();
+    if (!timer) return {}
+    let timerAsJSON = timer.snapshot;
     if (timer.isRunning() && timerAsJSON.remaining > 0) return {
       icon: 'pause',
       color: 'primary',
@@ -229,22 +250,28 @@ export class HomePage {
       action: 'pause'
     }
     if (timer.isRunning() && timerAsJSON.remaining <= 0) return {
-      icon:'stop',
+      icon: 'stop',
       color: 'danger',
-      label: 'Stop',
+      label: 'Dismiss',
       action: 'stop'
     }
     if ( !timer.isDone() && timerAsJSON.remaining > 0 ) return {
-      icon:'play',
+      icon: 'play',
       color: 'secondary',
       label: 'Start',
       action: 'start'
     }
-    return {
-      icon:'play',
+    if ( timer.isDone()  ) return {
+      icon: 'close',
       color: 'primary',
-      label: 'Reset',
-      action: 'set'
+      label: 'Remove',
+      action: 'complete'
+    }
+    return {
+      icon: 'play',
+      color: 'secondary',
+      label: 'Start',
+      action: 'start'
     }
   }
 

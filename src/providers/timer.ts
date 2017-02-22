@@ -259,7 +259,6 @@ export class Timer implements TimerInterface {
         if (o.action==TimerAction.Done) {
           setTimeout(()=>this.start());
           chainSubscription.unsubscribe();
-          // console.log("start chained timer, id=", this.id);
         }
       },
       complete: ()=>{ 
@@ -270,10 +269,11 @@ export class Timer implements TimerInterface {
   }
 
   /**
-   * subscribe to timer notifications
-   *  action: [set, start, pause, alert, stop]
+   * subscribe to timer notifications, 
+   *  TimerEvent = {id, action: TimerAction, value}
    */
   subscribe(observer: any){
+    // console.info("subscribe to id=", this.id);
     const subscription = this._subject.subscribe(observer);
     return subscription;
   }

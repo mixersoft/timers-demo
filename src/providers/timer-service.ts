@@ -158,6 +158,22 @@ export class TimerService {
     return found;
   }
 
+  getAll() : Timer[] {
+    return _.values(this._data).filter( o=>o );
+  }
+
+  /**
+   * get array of Timer.id for complete timers, i.e. this._data[id] === null;
+   */
+  getComplete() : Array<string> {
+    const keys: Array<string> = Object.keys(this._data).reduce( (memo, k)=>{
+      if (this._data[k]) return memo;
+      memo.push(k);
+      return memo;
+    }, []);
+    return keys;
+  }
+
   /**
    * event handler for any TimerEvent
    */
