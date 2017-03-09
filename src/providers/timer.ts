@@ -68,6 +68,70 @@ export class Timer implements TimerInterface {
     return this;
   }
 
+  /**
+   * set Timer by (pan) gesture, like iPod scroll wheel
+   * - clockwise (CW) increases time
+   * - counter-clockwise (CCW) decreases time
+   * - noop if timer.isRunning() == true
+   * 
+   * usage: 
+   *      // Template
+   *      <div (pan)="onPan($event, snapshot)">
+   *        <round-progress
+   *          [current]="snapshot.remaining" 
+   *          [max]="snapshot.duration"
+   *        > </round-progress>
+   *      </div>
+   * 
+   *      // ViewController
+   *      onPan(panEvent, snapshot) {
+   *        let snapshot = timer.setByScrollWheel(panEvent).snap(1);
+   *      }
+   * 
+   */
+  setByScrollWheel(panEvent){
+    if (this.isRunning()) return this;
+    const ev = panEvent;
+    try {
+      const dist = Math.abs(ev.distance * ev.velocity);
+      // check ev.srcEvent.offsetX/Y for position within svg, ev.target.clientWidth/Height
+      // translate click offset to center of (pan) target
+      const [clickX, clickY] = [
+        ev.srcEvent.offsetX - ev.target.clientWidth/2, 
+        ev.target.clientWidth/2 - ev.srcEvent.offsetY
+      ];
+      const theta = Math.atan2(clickY, clickX)*180/Math.PI;
+      const alpha = Math.atan2(ev.velocityY, ev.velocityX)*180/Math.PI;
+      let rotation: string;
+      if (theta>=0) { // Quad I, II
+        rotation = (-alpha<theta && alpha<(180-theta)) ? 'CW' : 'CCW'
+      } else if (theta<0){ // Quad III, IV
+        rotation = (-alpha<theta || -alpha>(180+theta)) ? 'CW' : 'CCW'
+      }
+      this.snapshot.duration += (rotation==='CW') ? dist : -dist;
+
+
+      // console.info(`${rotation} : theta=${Math.round(theta)}, alpha=${Math.round(alpha)}deg, dist=${dist}`);
+
+      this.set(this.snapshot.remaining = this.snapshot.duration);
+
+      // let msg = `${ev.additionalEvent}: ${ev.distance.toPrecision(3)}, [${ev.velocityX.toPrecision(3)}, ${ev.velocityY.toPrecision(3)}], ${Math.round(alpha)}deg`;
+      // if (!ev.additionalEvent)
+      //   console.warn(msg, ev);
+      // else
+      //   console.log(msg);
+
+    } catch (err) {
+      console.warn("WARNING: rotation recognition failed. using L/R pan as fallback.")
+      const dist = Math.abs(ev.distance * ev.velocity);
+      const deltaH = Math.abs(ev.deltaX * ev.velocityX);
+      let rotation = ev.deltaX >= 0 ? 'CW' : 'CCW';
+      this.snapshot.duration += (rotation==='CW') ? dist : -dist;
+      this.set(this.snapshot.remaining = this.snapshot.duration);
+    }
+    return this   // call this.snap(precision) for updated snapshot
+  }
+
   getDuration():number {
     return this.duration
   }
