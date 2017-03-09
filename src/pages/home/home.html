@@ -21,7 +21,9 @@
     > 
       <ion-card-content>
         <ion-row>
-          <ion-col class="timer-wrap" width-33 offset-33>
+          <ion-col class="timer-wrap" width-33 offset-33 
+            (pan)="onPan($event, snapshot)"
+            >
             <round-progress 
               [current]="snapshot.remaining" 
               [max]="snapshot.duration"

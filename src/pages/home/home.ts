@@ -102,7 +102,7 @@ export class HomePage {
    */
   timerObserver = { 
     next: (o:TimerEvent)=>{
-      console.log(`timer, id=${o.id} action=${TimerAction[o.action]}`,o);
+      // console.log(`timer, id=${o.id} action=${TimerAction[o.action]}`,o);
       const timer = this.timerSvc.get(o.id);
       Object.assign( this.timerRenderAttrs[o.id] ,  this.getButtonStyles(timer) );
       if (o.action==TimerAction.Done) setTimeout(()=>{
@@ -298,28 +298,11 @@ export class HomePage {
     this.demoCreateTimers();
   }
 
-  onRotate(ev){
-    console.log("guesture=",ev.type);
-  }
   onPan(ev, snapshot){
     const timer = this.timerSvc.get(snapshot.id);
     if (timer.isRunning()) return;
-    let deltaT: number;
-    // snapshot.duration += deltaT;
-    switch (ev.additionalEvent){
-      case "panright":
-        deltaT =  ev.deltaX // * Math.abs(ev.velocityX)
-        timer.set(deltaT + snapshot.duration);
-        break;
-      case "panleft":
-        // convert to % 
-        deltaT = ev.deltaX;
-        break;
-
-    }
-    console.log(`${deltaT}, ${snapshot.duration} = ${timer.getDuration()/1000}`);
-    let snap = this.snapshots.find( (v)=>v.id == timer.id )
-    snap = timer.snap(1);
+    let snap = this.snapshots.find( (v)=>v.id == timer.id );
+    return Object.assign(snap, timer.setByScrollWheel(ev).snap(1));
   }
 
 }

@@ -15,8 +15,8 @@ export class Timer implements TimerInterface {
   sound: string;
   snapshot: TimerAttributes;
   protected onDone: (timer:Timer)=>void;       // (optional) callback when timer.remaining==0
-  protected duration: number = 0;       // original duration, in seconds
-  protected remaining: number;          // remaining time after pause
+  protected duration: number = 0;       // original duration, in milliseconds
+  protected remaining: number;          // remaining time after pause, in milliseconds
   protected expires: number;            // Unixtime for timer expiration
   protected _isDone: boolean;           // user responds to timer expiration
   protected _isComplete: Boolean = false; // true on timer.complete(), this._subject.complete() is notified
@@ -46,7 +46,7 @@ export class Timer implements TimerInterface {
    * set timer and alert callback
    * @param value number, timer duration in seconds
    */
-  set(opt: Duration | number, onDone?: (timer:Timer)=>void ) : Timer {
+  set(opt: Duration | number, onDone?: (timer:Timer)=>void, silent=false ) : Timer {
     if (this._isComplete) return this;
 
     if (opt){
@@ -58,6 +58,8 @@ export class Timer implements TimerInterface {
     this._isDone = false;
     if (onDone) this.onDone = onDone;
 
+    if (silent) return this;  // setScrollWheel update, do not notify until complete
+
     // debounce
     this._subject.next({
       action: TimerAction.Set,
@@ -66,6 +68,84 @@ export class Timer implements TimerInterface {
     });
 
     return this;
+  }
+
+  /**
+   * set Timer by (pan) gesture, like iPod scroll wheel
+   * - clockwise (CW) increases time
+   * - counter-clockwise (CCW) decreases time
+   * - noop if timer.isRunning() == true
+   * 
+   * usage: 
+   *      // Template
+   *      <div (pan)="onPan($event, snapshot)">
+   *        <round-progress
+   *          [current]="snapshot.remaining" 
+   *          [max]="snapshot.duration"
+   *        > </round-progress>
+   *      </div>
+   * 
+   *      // ViewController
+   *      onPan(panEvent, snapshot) {
+   *        let snapshot = timer.setByScrollWheel(panEvent).snap(1);
+   *      }
+   * 
+   */
+  setByScrollWheel(panEvent){
+    if (this.isRunning()) return this;
+    const ev = panEvent;
+
+    if (ev.isFirst || !this['$duration0']) {
+      this['$duration0'] = this.duration/1000;
+      console.info(`Timer updating, from ${this['$duration0']}`);
+    }
+    try {
+      let dist = Math.abs(ev.distance * ev.velocity);
+      // check ev.srcEvent.offsetX/Y for position within svg, ev.target.clientWidth/Height
+      // translate click offset to center of (pan) target
+      const [clickX, clickY] = [
+        ev.srcEvent.offsetX - ev.target.clientWidth/2, 
+        ev.target.clientWidth/2 - ev.srcEvent.offsetY
+      ];
+      const theta = Math.atan2(clickY, clickX)*180/Math.PI;
+      const alpha = Math.atan2(ev.velocityY, ev.velocityX)*180/Math.PI;
+      let rotation: string;
+      if (theta>=0) { // Quad I, II
+        rotation = (-alpha<theta && alpha<(180-theta)) ? 'CW' : 'CCW'
+      } else if (theta<0){ // Quad III, IV
+        rotation = (-alpha<theta || -alpha>(180+theta)) ? 'CW' : 'CCW'
+      }
+
+      dist = dist * 1000;               // in milliseconds
+
+      if (dist > 0){        
+        this.duration += (rotation==='CW') ? dist : -dist;
+        // console.info(`${rotation} : theta=${Math.round(theta)}, alpha=${Math.round(alpha)}deg, dist=${dist}`);
+
+        this.set(this.duration/1000, null, true);   // do not notify subscribers
+
+        let msg = `${ev.additionalEvent}: ${ev.distance.toPrecision(3)}, [${ev.velocityX.toPrecision(3)}, ${ev.velocityY.toPrecision(3)}], ${Math.round(alpha)}deg`;
+        if (!ev.additionalEvent)
+          console.warn(msg, ev);
+        else
+          console.log(msg);
+      }
+
+    } catch (err) {
+      console.warn("WARNING: rotation recognition failed. using L/R pan as fallback.")
+      const dist = Math.abs(ev.distance * ev.velocity)*1000;
+      const deltaH = Math.abs(ev.deltaX * ev.velocityX);
+      let rotation = ev.deltaX >= 0 ? 'CW' : 'CCW';
+      this.duration += (rotation==='CW') ? dist : -dist;
+      this.set(this.duration/1000, null, true);   // do not notify subscribers
+    }
+    if (ev.isFinal) {
+      console.info(`Timer updated, from ${this['$duration0']} > ${this.duration/1000}`);
+      delete this['$duration0'];
+      delete this['$accumulate'];
+      this.set(this.duration/1000);   // send notification to subscribers
+    }
+    return this   // call this.snap(precision) for updated snapshot
   }
 
   getDuration():number {
@@ -187,7 +267,6 @@ export class Timer implements TimerInterface {
         break;
     }
     Object.assign( this.snapshot, snapshot);
-    // if (snapshot.remaining > 100) console.log(`snapshot.remaining=${snapshot.remaining}`);
     return this.snapshot;
 
   }
