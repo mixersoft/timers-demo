@@ -8,6 +8,71 @@ import {
   TimerAction, TimerEvent, TimerAttributes, TimerInterface
 } from './timer-service';
 
+class SpeedSenitiveScrollWheel {
+  private duration0: number;      // original duration in MS
+  private timer: Timer;
+  private v : Array<number> = [];
+  private bias:number = 0;
+
+  // public onPan: (ev:any)=>void;   // throttled method receiving pan events
+  
+  constructor(t:Timer, throttle: number = 300){
+    this.timer = t;
+  }
+
+  reset(){
+    this.duration0 = this.timer.getDuration() || 0;
+    this.v.length = 0;
+    this.bias = 0;
+  }
+
+
+  /**
+   * translate pan gesture/event to a SpeedSensitive Scroll for setting timer
+   * NOTE: this method should be "throttled" to output a Duration interval
+   * @param ev $event, from <div (pan)="onPan($event)" ></div>
+   */
+  onPan(ev:any): Duration{
+    const LIMIT = 25;
+    // "throttle" pan translations by logging velocity and passing avgV
+    // discard "throttled" events, do not return cached values.
+    const v = Math.abs(ev.velocity.toPrecision(2));
+    this.v.unshift( v );
+    if (this.v.length >= LIMIT) {
+      const sumV = this.v.reduce( (sum, v)=>{
+        return sum += v;
+      }, 0);
+      const avgV = sumV/this.v.length
+      const interval = this.getInterval(avgV);
+      console.info(` Vavg: ${avgV.toPrecision(1)}, V[0..10]: ${this.v.slice(0,10).join(' ')}`);
+      this.v.length = 0;  // reset for next throttled event
+      return interval;
+    }
+    return undefined;
+  }
+
+  getInterval(velocity: number):Duration {
+    const DURATION_INTERVALS = [
+      { key: 'seconds', incr: 1 },
+      { key: 'seconds', incr: 10 },
+      { key: 'minutes', incr: 1 },
+      { key: 'minutes', incr: 1 },
+      { key: 'minutes', incr: 5 },
+      { key: 'minutes', incr: 10 },
+      { key: 'minutes', incr: 10 },
+      { key: 'hours', incr: 1 },
+    ];
+    const VELOCITY_MAP = [0.1, 0.2,  0.3,0.31,  0.4,  0.55,0.6,    999];
+    const i = VELOCITY_MAP.findIndex( (v)=>Math.abs(velocity) < v );
+    this.bias = Math.max(i-2, this.bias);
+    const interval = DURATION_INTERVALS[ Math.max(i, this.bias) ];
+    const duration = {'interval': 1 }
+    duration[interval.key] = interval.incr;
+    // console.info(`${JSON.stringify(duration)}, index=${i}`);
+    return duration;
+  }
+
+}
 
 export class Timer implements TimerInterface {
   id: string;
@@ -21,6 +86,8 @@ export class Timer implements TimerInterface {
   protected _isDone: boolean;           // user responds to timer expiration
   protected _isComplete: Boolean = false; // true on timer.complete(), this._subject.complete() is notified
   protected _subject: Subject<TimerEvent>;  // use this.subscribe() to get TimerEvents from Subject
+  
+  protected scrollWheel = new SpeedSenitiveScrollWheel(this);
 
   private _alarm: Subscription;         // subscription for actual TimerAction.Done notifcation
   
@@ -49,9 +116,24 @@ export class Timer implements TimerInterface {
   set(opt: Duration | number, onDone?: (timer:Timer)=>void, silent=false ) : Timer {
     if (this._isComplete) return this;
 
-    if (opt){
-      this.duration = Math.max(parseDurationMS(opt), 0);
-    }
+    const durationMS = Math.max(parseDurationMS(opt), 0);
+    if (typeof opt != 'number' && opt.interval){
+      try {
+        // round to interval
+        const remainder = this.duration % durationMS;
+        const deltaMS = remainder==0 ? opt.interval*durationMS : (opt.interval<0 ? -1*remainder : durationMS-remainder);
+        const d0 = this.duration;
+        if (opt.interval<0 &&  d0 < (2*deltaMS) ){
+          // have to scale down deltaMS as we approach 0
+          console.warn(`WARNING set: d0=${d0}, deltaMS=${deltaMS}`)
+          this.duration = Math.max(d0+(deltaMS/10), 0);
+        } else
+          this.duration = Math.max(d0+deltaMS,0);
+      } catch (e) {
+        throw new Error("Error: set(interval==true");
+      }
+    } else
+      this.duration = durationMS;
 
     this.remaining = null;
     this.expires = null;
@@ -94,15 +176,12 @@ export class Timer implements TimerInterface {
   setByScrollWheel(panEvent){
     if (this.isRunning()) return this;
     const ev = panEvent;
-
-    if (ev.isFirst || !this['$duration0']) {
-      this['$duration0'] = this.duration/1000;
-      console.info(`Timer updating, from ${this['$duration0']}`);
-    }
+    
     try {
       let dist = Math.abs(ev.distance * ev.velocity);
       // check ev.srcEvent.offsetX/Y for position within svg, ev.target.clientWidth/Height
       // translate click offset to center of (pan) target
+      
       const [clickX, clickY] = [
         ev.srcEvent.offsetX - ev.target.clientWidth/2, 
         ev.target.clientWidth/2 - ev.srcEvent.offsetY
@@ -116,21 +195,18 @@ export class Timer implements TimerInterface {
         rotation = (-alpha<theta || -alpha>(180+theta)) ? 'CW' : 'CCW'
       }
 
-      dist = dist * 1000;               // in milliseconds
-
-      if (dist > 0){        
-        this.duration += (rotation==='CW') ? dist : -dist;
-        // console.info(`${rotation} : theta=${Math.round(theta)}, alpha=${Math.round(alpha)}deg, dist=${dist}`);
-
-        this.set(this.duration/1000, null, true);   // do not notify subscribers
-
-        let msg = `${ev.additionalEvent}: ${ev.distance.toPrecision(3)}, [${ev.velocityX.toPrecision(3)}, ${ev.velocityY.toPrecision(3)}], ${Math.round(alpha)}deg`;
-        if (!ev.additionalEvent)
-          console.warn(msg, ev);
+      /* round timer values to intervals */
+      // dist = _roundToInterval(dist);
+      const duration = this.scrollWheel.onPan(ev);
+      if (duration){
+        duration.interval = (rotation == 'CW') ? 1 : -1;
+        const msg = (`${rotation}:  ${JSON.stringify(duration)}`);
+        if (rotation=="CCW")
+          console.warn(msg);
         else
           console.log(msg);
+        this.set(duration, null, true);
       }
-
     } catch (err) {
       console.warn("WARNING: rotation recognition failed. using L/R pan as fallback.")
       const dist = Math.abs(ev.distance * ev.velocity)*1000;
@@ -140,10 +216,9 @@ export class Timer implements TimerInterface {
       this.set(this.duration/1000, null, true);   // do not notify subscribers
     }
     if (ev.isFinal) {
-      console.info(`Timer updated, from ${this['$duration0']} > ${this.duration/1000}`);
-      delete this['$duration0'];
-      delete this['$accumulate'];
+      console.info(`Timer updated: duration=${this.duration/1000}`);
       this.set(this.duration/1000);   // send notification to subscribers
+      this.scrollWheel.reset();
     }
     return this   // call this.snap(precision) for updated snapshot
   }

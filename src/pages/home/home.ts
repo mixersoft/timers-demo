@@ -112,10 +112,11 @@ export class HomePage {
     complete: ()=>{
       // TODO: animate remove timer
       const toRemove = this.timerSvc.getComplete();
+      console.info("Observer.complete, ids=",toRemove);
       toRemove.forEach( (id)=>{
         this.removeTimer(id, true);
       })
-      this.sortTimers();
+      this.sortTimers(0);  // update this.snapshots
     }
   }
 
@@ -131,13 +132,56 @@ export class HomePage {
     }
   }
 
-  sortTimers() {
+  /**
+   * Create a new Timer set to duration==0, add to ViewController
+   * @param ev 
+   */
+  createTimer(ev){
+    const t = this.timerSvc.setTimer(0);
+    this.renderTimer(t);
+  }
+
+  deleteTimers(ids?:string[]){
+    if (!ids) 
+      ids = this.timers.map( (o)=>o.id );
+    let timers = ids.map( (id)=>{
+      return this.timerSvc.get( id );
+    });
+    console.warn(`deleteTimers(), count=${timers.length}, ids=${ timers.map( t=>t.id ) }`);
+    console.info(`0. deleteTimers(), timers=${this.timers.length}, snapshots=${this.snapshots.length}`);
+
+    timers = _.sortBy(timers, ['remaining', 'duration']);
+    timers.reverse();   // remove from bottom up
+    timers.forEach((t)=>{
+      console.log("timer.complete(), duration=",t.getDuration(), t.id)
+      t.complete();
+      // will trigger this.removeTimers()
+    })
+
+
+    this.timers = this.timers.filter( (t)=>ids.indexOf(t.id)==-1 );
+    this.sortTimers(100);
+    console.info(`1. deleteTimers(), timers=${this.timers.length}, snapshots=${this.snapshots.length}`);
+    this.timerSvc.clearStorage();
+
+  }
+
+  sortTimers(delayMS?:number) {
+    if (delayMS != undefined) {
+      // add delay to prevent immediate sorting on TimerAction.Start
+      return setTimeout( ()=>this.sortTimers(), delayMS);
+    }
     // TODO: sortBy multiple, nested properties
     // this.timers = _.sortBy(this.timers, ['snapshot.remaining', 'snapshot.duration']);
     this.snapshots = this.timers.map( (t)=>t.snap(1));
     this.snapshots = _.sortBy(this.snapshots, ['remaining', 'duration']);
   }
 
+  /**
+   * remove Timer from ViewController, call from complete
+   * @param id 
+   * @param deferSort 
+   */
   removeTimer(id:string, deferSort:boolean=false){
     const i = this.timers.findIndex( (o)=>o.id == id )
     if (i > -1){
@@ -148,6 +192,7 @@ export class HomePage {
         this.sortTimers();
       }
     }
+    console.info(`timers.length=${this.timers.length}, snapshots.length=${this.snapshots.length}`)
   }
 
   /**
@@ -289,12 +334,11 @@ export class HomePage {
 
   }
 
+  /**
+   * reset demo timers
+   */
   resetTimers(){
-    const result = this.timers.map((t)=>{
-      t.complete();
-    });
-    this.timers = [];
-    this.timerSvc.clearStorage();
+    this.deleteTimers();
     this.demoCreateTimers();
   }
 

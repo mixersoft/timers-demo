@@ -103,6 +103,7 @@ export interface Duration {
   minutes?: number;
   s?: number;
   seconds?: number;
+  interval?: any;   // [-1; 0 ; 1]
   // [propName: string]: any;
 }
 
