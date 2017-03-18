@@ -42,7 +42,7 @@ export class TimerSnapshotPipe implements PipeTransform {
       unwrap = true;
     }
     const result = value.map( (o)=>{
-      return o ? o.snap(asMS)  : {};
+      return o ? o.snap(2)  : {};
     });
     return unwrap ? result[0] : result;
   }
@@ -103,6 +103,7 @@ export interface Duration {
   minutes?: number;
   s?: number;
   seconds?: number;
+  interval?: any;   // [-1; 0 ; 1]
   // [propName: string]: any;
 }
 
@@ -156,6 +157,22 @@ export class TimerService {
     let key: string = this._parseId(id);
     const found = key && this._data[key];
     return found;
+  }
+
+  getAll() : Timer[] {
+    return _.values(this._data).filter( o=>o );
+  }
+
+  /**
+   * get array of Timer.id for complete timers, i.e. this._data[id] === null;
+   */
+  getComplete() : Array<string> {
+    const keys: Array<string> = Object.keys(this._data).reduce( (memo, k)=>{
+      if (this._data[k]) return memo;
+      memo.push(k);
+      return memo;
+    }, []);
+    return keys;
   }
 
   /**
@@ -216,6 +233,12 @@ export class TimerService {
    */
   clearStorage() {
     this.storage.set(this._TIMER_KEY, undefined);
+  }
+
+  map( cb:(t:Timer)=>any ) {
+    Object.keys(this._data).forEach( (id)=>{
+      return cb(this._data[id]);
+    })
   }
 
   create(className: string, opt: any) : Timer {

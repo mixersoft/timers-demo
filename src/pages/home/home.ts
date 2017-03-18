@@ -31,14 +31,7 @@ export class HomePage {
     , public settings: Settings
     , public toast: ToastController
   ) {
-    const self = this;
-    const tick = function(){
-      this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
-      self.snapshots = self.timers.map( (t)=>t.snap(true)  );
-      return;
-    }
-
-    this.timerSvc.setOnTick( tick, 100 );
+    this.timerSvc.setOnTick( this.timerCallbacks.onTick, 100 );
   }
 
   ionViewDidEnter(){
@@ -109,22 +102,97 @@ export class HomePage {
    */
   timerObserver = { 
     next: (o:TimerEvent)=>{
-      console.log(`timer, id=${o.id} action=${TimerAction[o.action]}`,o);
+      // console.log(`timer, id=${o.id} action=${TimerAction[o.action]}`,o);
       const timer = this.timerSvc.get(o.id);
       Object.assign( this.timerRenderAttrs[o.id] ,  this.getButtonStyles(timer) );
       if (o.action==TimerAction.Done) setTimeout(()=>{
         // o.timer.complete()
       },1000)
+    },
+    complete: ()=>{
+      // TODO: animate remove timer
+      const toRemove = this.timerSvc.getComplete();
+      console.info("Observer.complete, ids=",toRemove);
+      toRemove.forEach( (id)=>{
+        this.removeTimer(id, true);
+      })
+      this.sortTimers(0);  // update this.snapshots
     }
   }
 
   timerCallbacks = {
     onDone: (t:Timer)=>{
-      console.info(`callback onDone() DONE, id=${t.id}, duration=${t.getDuration()}`);
+      console.info(`callback onDone() DONE, id=${t.id}, duration=${t.snapshot.duration}`);
     },
     onBeep: (t:Timer)=>{
       console.info(`callback onBeep() BEEP, id=${t.id}, remaining=${t.check()}`);
+    },
+    onTick: ()=>{
+      this.sortTimers();
     }
+  }
+
+  /**
+   * Create a new Timer set to duration==0, add to ViewController
+   * @param ev 
+   */
+  createTimer(ev){
+    const t = this.timerSvc.setTimer(0);
+    this.renderTimer(t);
+  }
+
+  deleteTimers(ids?:string[]){
+    if (!ids) 
+      ids = this.timers.map( (o)=>o.id );
+    let timers = ids.map( (id)=>{
+      return this.timerSvc.get( id );
+    });
+    console.warn(`deleteTimers(), count=${timers.length}, ids=${ timers.map( t=>t.id ) }`);
+    console.info(`0. deleteTimers(), timers=${this.timers.length}, snapshots=${this.snapshots.length}`);
+
+    timers = _.sortBy(timers, ['remaining', 'duration']);
+    timers.reverse();   // remove from bottom up
+    timers.forEach((t)=>{
+      console.log("timer.complete(), duration=",t.getDuration(), t.id)
+      t.complete();
+      // will trigger this.removeTimers()
+    })
+
+
+    this.timers = this.timers.filter( (t)=>ids.indexOf(t.id)==-1 );
+    this.sortTimers(100);
+    console.info(`1. deleteTimers(), timers=${this.timers.length}, snapshots=${this.snapshots.length}`);
+    this.timerSvc.clearStorage();
+
+  }
+
+  sortTimers(delayMS?:number) {
+    if (delayMS != undefined) {
+      // add delay to prevent immediate sorting on TimerAction.Start
+      return setTimeout( ()=>this.sortTimers(), delayMS);
+    }
+    // TODO: sortBy multiple, nested properties
+    // this.timers = _.sortBy(this.timers, ['snapshot.remaining', 'snapshot.duration']);
+    this.snapshots = this.timers.map( (t)=>t.snap(1));
+    this.snapshots = _.sortBy(this.snapshots, ['remaining', 'duration']);
+  }
+
+  /**
+   * remove Timer from ViewController, call from complete
+   * @param id 
+   * @param deferSort 
+   */
+  removeTimer(id:string, deferSort:boolean=false){
+    const i = this.timers.findIndex( (o)=>o.id == id )
+    if (i > -1){
+      const t = this.timers[i];
+      console.warn("removing Timer.id=", t.id);
+      this.timers.splice(i,1);
+      if (deferSort===false){
+        this.sortTimers();
+      }
+    }
+    console.info(`timers.length=${this.timers.length}, snapshots.length=${this.snapshots.length}`)
   }
 
   /**
@@ -155,7 +223,7 @@ export class HomePage {
 
 
   demoCreateTimers(){
-    const t1 = this.timerSvc.setTimer(60);
+    const t1 = this.timerSvc.setTimer(6);
     const t2 = this.timerSvc.create('BeepTimer', {
       'minutes':1,
       'beepInterval': {
@@ -168,26 +236,30 @@ export class HomePage {
 
     [t1,t2,t3,t4].forEach( o=>{
       this.renderTimer(o);
+      o.setCallbacks(this.timerCallbacks);
     });
     
 
     t2.chain(t1);
 
-    t2.setCallbacks(this.timerCallbacks)
+    // t2.setCallbacks(this.timerCallbacks)
 
-    t1.setCallbacks({
-      'onDone': this.timerCallbacks.onDone
-    })
+    // t1.setCallbacks({
+    //   'onDone': this.timerCallbacks.onDone
+    // })
 
-    const repeatSub = ()=>{
+    const repeatSub = (t1:Timer)=>{
+      console.info("repeatSub for id=", t1.id);
       const anotherSub = t1.subscribe({
-        next: (t)=>console.info(`2nd timer1 subscr, id=${t.id}`,t),
+        next: (t)=>console.info(`repeatSub notified, id=${t.id}`,t),
         complete: ()=>{
           console.warn(`timer COMPLETE`),
           anotherSub.unsubscribe();
         }
       })
     }
+
+    repeatSub(t1);
 
   }
 
@@ -198,10 +270,12 @@ export class HomePage {
   renderTimer(timer:Timer){
     if (!timer) return;
     // connect timer to view
-    timer.snap(true);
+    timer.snap();
     this.timers.push(timer);
-    this.timers = _.sortBy(this.timers, ['remaining', 'duration']);
-    this.snapshots = this.timers.map( t=>t.snap(true) );
+    
+    // create and sort snapshots
+    this.sortTimers();
+
     this.timerRenderAttrs[timer.id] = Object.assign({
       subscription: timer.subscribe(this.timerObserver)
     }, this.getButtonStyles(timer));
@@ -212,8 +286,8 @@ export class HomePage {
    * update Timer render properties on create and each TimerEvent
    */
   getButtonStyles(timer: Timer):any{
-    // if (!timer) return {}
-    let timerAsJSON = timer.toJSON();
+    if (!timer) return {}
+    let timerAsJSON = timer.snapshot;
     if (timer.isRunning() && timerAsJSON.remaining > 0) return {
       icon: 'pause',
       color: 'primary',
@@ -221,22 +295,28 @@ export class HomePage {
       action: 'pause'
     }
     if (timer.isRunning() && timerAsJSON.remaining <= 0) return {
-      icon:'stop',
+      icon: 'stop',
       color: 'danger',
-      label: 'Stop',
+      label: 'Dismiss',
       action: 'stop'
     }
     if ( !timer.isDone() && timerAsJSON.remaining > 0 ) return {
-      icon:'play',
+      icon: 'play',
       color: 'secondary',
       label: 'Start',
       action: 'start'
     }
-    return {
-      icon:'play',
+    if ( timer.isDone()  ) return {
+      icon: 'close',
       color: 'primary',
-      label: 'Reset',
-      action: 'set'
+      label: 'Remove',
+      action: 'complete'
+    }
+    return {
+      icon: 'play',
+      color: 'secondary',
+      label: 'Start',
+      action: 'start'
     }
   }
 
@@ -252,6 +332,21 @@ export class HomePage {
       toast.present();    
     }
 
+  }
+
+  /**
+   * reset demo timers
+   */
+  resetTimers(){
+    this.deleteTimers();
+    this.demoCreateTimers();
+  }
+
+  onPan(ev, snapshot){
+    const timer = this.timerSvc.get(snapshot.id);
+    if (timer.isRunning()) return;
+    let snap = this.snapshots.find( (v)=>v.id == timer.id );
+    return Object.assign(snap, timer.setByScrollWheel(ev).snap(1));
   }
 
 }

@@ -1,27 +1,35 @@
 <ion-header>
   <ion-navbar>
-    <ion-title>Home</ion-title>
+    <ion-title icon-left>
+      <ion-icon name="timer"></ion-icon>
+      Timers
+    </ion-title>
+    <ion-buttons end>
+      <button ion-button icon-only 
+      (click)="createTimer($event)"
+      >
+        <ion-icon name="add"></ion-icon>
+      </button>
+    </ion-buttons>
   </ion-navbar>
 </ion-header>
 
 <ion-content padding>
-  <h2>Welcome to Ionic!</h2>
-  <p>
-    This starter project comes with simple tabs-based layout for apps
-    that are going to primarily use a Tabbed UI.
-  </p>
-  <p>
-    Take a look at the <code>src/pages/</code> directory to add or change tabs,
-    update any existing page or create new pages.
-  </p>
-
-
+    <button ion-button color="primary" block icon-left
+    *ngIf="snapshots.length==0"
+    (click)="createTimer($event)"
+    >
+      <ion-icon name="add"></ion-icon>
+      Create Timer
+    </button>
     <ion-card  class="timer"
       *ngFor="let snapshot of snapshots"
     > 
       <ion-card-content>
         <ion-row>
-          <ion-col class="timer-wrap" width-33 offset-33>
+          <ion-col class="timer-wrap" width-33 offset-33 
+            (pan)="onPan($event, snapshot)"
+            >
             <round-progress 
               [current]="snapshot.remaining" 
               [max]="snapshot.duration"
@@ -46,5 +54,13 @@
         {{timerRenderAttrs[snapshot.id]?.label}}
       </button>
     </ion-card>
+
+    <button ion-button full outline icon-left
+    *ngIf="snapshots.length>0"
+    (click)="deleteTimers()"
+    > 
+      <ion-icon name="remove"></ion-icon>
+      Remove Timers 
+    </button>
 
 </ion-content>
