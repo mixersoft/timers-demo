@@ -182,9 +182,12 @@ export class Timer implements TimerInterface {
       // check ev.srcEvent.offsetX/Y for position within svg, ev.target.clientWidth/Height
       // translate click offset to center of (pan) target
       
+      // BUG: offsetX/Y not available in Safari
+      const offsetX = ev.srcEvent.offsetX || ev.srcEvent.layerX;
+      const offsetY = ev.srcEvent.offsetY || ev.srcEvent.layerY;
       const [clickX, clickY] = [
-        ev.srcEvent.offsetX - ev.target.clientWidth/2, 
-        ev.target.clientWidth/2 - ev.srcEvent.offsetY
+        offsetX - ev.target.clientWidth/2, 
+        ev.target.clientWidth/2 - offsetY
       ];
       const theta = Math.atan2(clickY, clickX)*180/Math.PI;
       const alpha = Math.atan2(ev.velocityY, ev.velocityX)*180/Math.PI;
